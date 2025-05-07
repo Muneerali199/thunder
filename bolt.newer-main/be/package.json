@@ -1,0 +1,21 @@
+{
+    "name": "be",
+    "version": "1.0.0",
+    "main": "index.js",
+    "type": "commonjs",
+    "scripts": {
+        "dev": "tsc -b && node dist/index.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "dependencies": {
+        "@google/generative-ai": "^0.21.0",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "cors": "^2.8.5",
+        "express": "^4.21.1",
+        "typescript": "^5.7.2"
+    }
+}
