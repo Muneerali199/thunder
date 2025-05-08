@@ -11,9 +11,8 @@ interface Message {
     content: string;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY as string);
-
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+const genAI = new GoogleGenerativeAI("AIzaSyCvHyAUsPWTlfOZ1L1wVVCp4BAuDeUTYCw");
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 const app = express();
 app.use(cors());
 app.use(express.json());
