@@ -4,6 +4,8 @@ import { Home } from './pages/Home';
 import { Builder } from './pages/Builder';
 import { parseXml } from './steps';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { Pricing } from './components/Pricing';
+import { Checkout } from './components/checkout';
 
 function App() {
   return (
@@ -12,6 +14,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/builder" element={<Builder />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/checkout" element={<Checkout />} />
       </Routes>
     </BrowserRouter>
     </ClerkProvider>

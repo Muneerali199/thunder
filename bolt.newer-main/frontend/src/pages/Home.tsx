@@ -1,13 +1,40 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth } from '@clerk/clerk-react';
+import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
+
+type UserMetadata = {
+  tier: 'free' | 'pro' | 'enterprise';
+  remainingTokens: number;
+};
 
 export function Home() {
   const [prompt, setPrompt] = useState('');
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
+  const { user } = useUser();
+  const [usage, setUsage] = useState<UserMetadata>({ 
+    tier: 'free', 
+    remainingTokens: 3 
+  });
+
+  useEffect(() => {
+    const loadUsage = async () => {
+      if (isSignedIn && user) {
+        const metadata = user.publicMetadata as UserMetadata;
+        setUsage({
+          tier: metadata.tier || 'free',
+          remainingTokens: metadata.remainingTokens || 3
+        });
+      } else {
+        const localUsage = localStorage.getItem('usage');
+        if (localUsage) setUsage(JSON.parse(localUsage));
+      }
+    };
+    
+    loadUsage();
+  }, [isSignedIn, user]);
 
   const recommendations = [
     'Design a futuristic portfolio for my digital art',
@@ -16,13 +43,34 @@ export function Home() {
     'Make a vibrant landing page for my app'
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!isSignedIn) {
-      alert('Please sign up to submit prompts');
+      alert('Please sign in to submit prompts');
       return;
     }
+
+    if (usage.remainingTokens <= 0 && usage.tier === 'free') {
+      alert('You\'ve reached your free limit. Please upgrade to continue.');
+      navigate('/pricing');
+      return;
+    }
+
     if (prompt.trim()) {
+      const newUsage = {
+        ...usage,
+        remainingTokens: usage.remainingTokens - 1
+      };
+
+      setUsage(newUsage);
+      
+      if (user) {
+        await user.update({ publicMetadata: newUsage });
+      } else {
+        localStorage.setItem('usage', JSON.stringify(newUsage));
+      }
+
       navigate('/builder', { state: { prompt } });
       setPrompt('');
     }
@@ -30,18 +78,43 @@ export function Home() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      console.log('Selected file:', file);
-    }
+    if (file) console.log('Uploaded file:', file);
   };
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-start p-10 relative overflow-hidden font-sans">
+      {/* Usage Indicator */}
+      <div className="absolute top-4 right-4 z-50">
+        <motion.div 
+          className="bg-gray-900/50 backdrop-blur-lg px-4 py-2 rounded-full text-sm"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+        >
+          {usage.tier === 'free' ? (
+            <span className="text-cyan-400">
+              Free Tokens: {usage.remainingTokens}/3
+            </span>
+          ) : (
+            <span className="text-purple-400">
+              ⚡ Premium Access (Unlimited)
+            </span>
+          )}
+        </motion.div>
+      </div>
+
       {/* Navbar */}
       <nav className="w-full max-w-4xl mb-10 relative z-20">
-        <div className="flex justify-end items-center gap-4">
-          <SignedOut>
-            <div className="flex items-center gap-4">
+        <div className="flex justify-between items-center">
+          <motion.button 
+            onClick={() => navigate('/pricing')}
+            className="text-gray-300 hover:text-cyan-400 transition-colors"
+            whileHover={{ scale: 1.05 }}
+          >
+            Pricing
+          </motion.button>
+          
+          <div className="flex items-center gap-4">
+            <SignedOut>
               <SignInButton mode="modal">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -59,23 +132,23 @@ export function Home() {
                   Sign Up
                 </motion.button>
               </SignUpButton>
-            </div>
-          </SignedOut>
-          <SignedIn>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <UserButton 
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    userButtonAvatarBox: "w-9 h-9",
-                    userButtonPopoverCard: "bg-gray-900 border border-gray-700/30 backdrop-blur-lg",
-                    userPreviewMainIdentifier: "text-cyan-400",
-                    userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400"
-                  }
-                }}
-              />
-            </motion.div>
-          </SignedIn>
+            </SignedOut>
+            <SignedIn>
+              <motion.div whileHover={{ scale: 1.05 }}>
+                <UserButton 
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox: "w-9 h-9",
+                      userButtonPopoverCard: "bg-gray-900 border border-gray-700/30 backdrop-blur-lg",
+                      userPreviewMainIdentifier: "text-cyan-400",
+                      userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400"
+                    }
+                  }}
+                />
+              </motion.div>
+            </SignedIn>
+          </div>
         </div>
       </nav>
 
@@ -218,6 +291,25 @@ export function Home() {
             ))}
           </motion.div>
         </SignedIn>
+
+        {/* Upgrade Banner */}
+        {usage.tier === 'free' && usage.remainingTokens <= 1 && (
+          <motion.div 
+            className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 rounded-xl mt-8"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+          >
+            <h3 className="text-white font-bold text-lg mb-2">
+              ⚡ Upgrade for Unlimited Access
+            </h3>
+            <button
+              onClick={() => navigate('/pricing')}
+              className="bg-white text-purple-600 px-6 py-2 rounded-full font-bold hover:bg-opacity-90 transition-all"
+            >
+              Upgrade Now
+            </button>
+          </motion.div>
+        )}
       </div>
 
       {/* Animation Styles */}
