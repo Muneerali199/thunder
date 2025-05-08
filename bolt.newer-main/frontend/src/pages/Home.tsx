@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/clerk-react';
 
 export function Home() {
   const [prompt, setPrompt] = useState('');
@@ -31,6 +32,45 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-start p-10 relative overflow-hidden font-sans">
+      {/* Navbar */}
+      <nav className="w-full max-w-4xl mb-10 relative z-20">
+        <div className="flex justify-end items-center gap-6">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="text-transparent bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text font-medium px-4 py-2"
+              >
+                Sign In
+              </motion.button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="text-transparent bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text font-medium px-4 py-2"
+              >
+                Sign Up
+              </motion.button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <motion.div whileHover={{ scale: 1.05 }}>
+              <UserButton 
+                afterSignOutUrl="/" 
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "w-9 h-9",
+                    userButtonPopoverCard: "bg-gray-900 border border-gray-700/30",
+                    userPreviewMainIdentifier: "text-cyan-400",
+                    userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400"
+                  }
+                }}
+              />
+            </motion.div>
+          </SignedIn>
+        </div>
+      </nav>
+
       {/* Aurora Background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20 animate-aurora-bg opacity-70" />
