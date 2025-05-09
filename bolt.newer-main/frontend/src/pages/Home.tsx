@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
+import { Home as HomeIcon, File, Settings, LayoutDashboard, Zap, Plus } from 'lucide-react';
 
 type UserMetadata = {
   tier: 'free' | 'pro' | 'enterprise';
@@ -12,17 +13,18 @@ export function Home() {
   const [prompt, setPrompt] = useState('');
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { isSignedIn, userId } = useAuth();
+  const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [usage, setUsage] = useState<UserMetadata>({ 
     tier: 'free', 
     remainingTokens: 3 
   });
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   useEffect(() => {
     const loadUsage = async () => {
       if (isSignedIn && user) {
-        const metadata = user.publicMetadata as UserMetadata;
+        const metadata = user.unsafeMetadata as UserMetadata;
         setUsage({
           tier: metadata.tier || 'free',
           remainingTokens: metadata.remainingTokens || 3
@@ -66,7 +68,7 @@ export function Home() {
       setUsage(newUsage);
       
       if (user) {
-        await user.update({ publicMetadata: newUsage });
+        await user.update({ unsafeMetadata: newUsage });
       } else {
         localStorage.setItem('usage', JSON.stringify(newUsage));
       }
@@ -82,7 +84,73 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-start p-10 relative overflow-hidden font-sans">
+    <div className={`min-h-screen bg-black flex flex-col items-center justify-start p-10 relative overflow-hidden font-sans transition-all duration-300 ${
+      isSignedIn ? 'ml-16' : ''
+    }`}>
+      {/* Sidebar */}
+      <SignedIn>
+        <motion.div
+          className={`fixed left-0 top-0 h-screen bg-gray-900/50 backdrop-blur-lg border-r border-gray-700/30 z-50 ${
+            isSidebarExpanded ? 'w-64' : 'w-16'
+          } transition-all duration-300`}
+          onMouseEnter={() => setIsSidebarExpanded(true)}
+          onMouseLeave={() => setIsSidebarExpanded(false)}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+        >
+          <div className="flex flex-col p-4 space-y-2 h-full">
+            <div className="flex items-center justify-center mb-6 p-2">
+              <Zap className="text-cyan-400 h-6 w-6" />
+            </div>
+
+            <nav className="flex-1 space-y-2">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <HomeIcon className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Home</span>}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Dashboard</span>}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <File className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Projects</span>}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="w-full mt-4 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 p-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
+              >
+                <Plus className="h-5 w-5" />
+                {isSidebarExpanded && <span className="text-sm">New Project</span>}
+              </motion.button>
+            </nav>
+
+            <div className="mt-auto">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <Settings className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Settings</span>}
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      </SignedIn>
+
       {/* Usage Indicator */}
       <div className="absolute top-4 right-4 z-50">
         <motion.div 
@@ -142,7 +210,8 @@ export function Home() {
                       userButtonAvatarBox: "w-9 h-9",
                       userButtonPopoverCard: "bg-gray-900 border border-gray-700/30 backdrop-blur-lg",
                       userPreviewMainIdentifier: "text-cyan-400",
-                      userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400"
+                      userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400",
+                      rootBox: "cursor-pointer"
                     }
                   }}
                 />
@@ -201,15 +270,7 @@ export function Home() {
                   whileTap={{ scale: 0.85 }}
                   className="absolute bottom-5 left-6 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white rounded-full p-4 shadow-lg shadow-cyan-500/60 hover:shadow-cyan-500/80 transition-all duration-500"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+                  <Plus className="h-6 w-6" />
                   <input
                     type="file"
                     ref={fileInputRef}
