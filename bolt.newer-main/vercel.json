@@ -1,44 +1,17 @@
 {
     "version": 2,
     "builds": [{
-            "src": "frontend/package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "frontend/dist",
-                "buildCommand": "cd frontend && npm install && npm run build",
-                "env": {
-                    "VITE_CLERK_PUBLISHABLE_KEY": "pk_test_cmVhbC1idWxsZnJvZy01OS5jbGVyay5hY2NvdW50cy5kZXYk",
-                    "VITE_API_URL": "https://your-backend-service.com"
-                }
-            }
-        },
-        {
-            "src": "backend/index.js",
-            "use": "@vercel/node",
-            "config": {
-                "includeFiles": ["backend/**"],
-                "env": {
-                    "GOOGLE_API_KEY": "AIzaSyCvHyAUsPWTlfOZ1L1wVVCp4BAuDeUTYCw",
-                    "FRONTEND_URL": "https://your-frontend-domain.vercel.app",
-                    "PORT": "3000"
-                }
-            }
+        "src": "frontend/package.json",
+        "use": "@vercel/static-build",
+        "config": {
+            "distDir": "frontend/dist",
+            "buildCommand": "cd frontend && npm install --legacy-peer-deps --force && npm run build"
         }
-    ],
+    }],
     "routes": [{
-            "src": "/api/(.*)",
-            "dest": "backend/index.js"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "frontend/dist/$1"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/frontend/dist/index.html",
-            "status": 200
-        }
-    ],
+        "src": "/(.*)",
+        "dest": "frontend/dist/$1"
+    }],
     "rewrites": [{
         "source": "/(.*)",
         "destination": "/frontend/dist/index.html"
