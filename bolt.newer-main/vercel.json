@@ -5,7 +5,7 @@
         "use": "@vercel/static-build",
         "config": {
             "distDir": "frontend/dist",
-            "buildCommand": "cd frontend && npm install --legacy-peer-deps --force && npm run build"
+            "buildCommand": "cd frontend && rm -rf node_modules package-lock.json && npm install --legacy-peer-deps --force && npm run build"
         }
     }],
     "rewrites": [{
