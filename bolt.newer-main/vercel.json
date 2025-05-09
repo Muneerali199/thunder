@@ -8,12 +8,13 @@
             "buildCommand": "cd frontend && npm install --legacy-peer-deps --force && npm run build"
         }
     }],
-    "routes": [{
-        "src": "/(.*)",
-        "dest": "frontend/dist/$1"
-    }],
     "rewrites": [{
-        "source": "/(.*)",
-        "destination": "/frontend/dist/index.html"
-    }]
+            "source": "/api/(.*)",
+            "destination": "https://your-backend-service.com/api/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/frontend/dist/index.html"
+        }
+    ]
 }
