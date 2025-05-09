@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, File, Settings, LayoutDashboard, Zap, Plus } from 'lucide-react';
+import { Home as HomeIcon, File, Settings, LayoutDashboard, Zap, Plus, History, DollarSign, User } from 'lucide-react';
 
 type UserMetadata = {
   tier: 'free' | 'pro' | 'enterprise';
@@ -100,12 +100,15 @@ export function Home() {
           transition={{ type: 'spring', stiffness: 200, damping: 30 }}
         >
           <div className="flex flex-col p-4 space-y-2 h-full">
+            {/* Logo */}
             <div className="flex items-center justify-center mb-6 p-2">
               <Zap className="text-cyan-400 h-6 w-6" />
             </div>
 
+            {/* Navigation Items */}
             <nav className="flex-1 space-y-2">
               <motion.button 
+                onClick={() => navigate('/')}
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
               >
@@ -114,6 +117,7 @@ export function Home() {
               </motion.button>
 
               <motion.button
+                onClick={() => navigate('/dashboard')}
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
               >
@@ -122,11 +126,30 @@ export function Home() {
               </motion.button>
 
               <motion.button
+                onClick={() => navigate('/projects')}
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
               >
                 <File className="h-5 w-5 flex-shrink-0" />
                 {isSidebarExpanded && <span className="text-sm">Projects</span>}
+              </motion.button>
+
+              <motion.button
+                onClick={() => navigate('/history')}
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <History className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">History</span>}
+              </motion.button>
+
+              <motion.button
+                onClick={() => navigate('/pricing')}
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <DollarSign className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Pricing</span>}
               </motion.button>
 
               <motion.button
@@ -138,8 +161,28 @@ export function Home() {
               </motion.button>
             </nav>
 
-            <div className="mt-auto">
+            {/* Bottom Section */}
+            <div className="mt-auto space-y-2">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+              >
+                <UserButton 
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      userButtonAvatarBox: "w-5 h-5",
+                      userButtonPopoverCard: "bg-gray-900 border border-gray-700/30 backdrop-blur-lg",
+                      userPreviewMainIdentifier: "text-cyan-400",
+                      userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400"
+                    }
+                  }}
+                />
+                {isSidebarExpanded && <span className="text-sm">Profile</span>}
+              </motion.div>
+
               <motion.button
+                onClick={() => navigate('/settings')}
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center space-x-3 text-gray-300 hover:text-cyan-400 w-full p-2 rounded-lg hover:bg-gray-800/50 transition-colors"
               >
@@ -152,37 +195,39 @@ export function Home() {
       </SignedIn>
 
       {/* Usage Indicator */}
-      <div className="absolute top-4 right-4 z-50">
-        <motion.div 
-          className="bg-gray-900/50 backdrop-blur-lg px-4 py-2 rounded-full text-sm"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-        >
-          {usage.tier === 'free' ? (
-            <span className="text-cyan-400">
-              Free Tokens: {usage.remainingTokens}/3
-            </span>
-          ) : (
-            <span className="text-purple-400">
-              ⚡ Premium Access (Unlimited)
-            </span>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Navbar */}
-      <nav className="w-full max-w-4xl mb-10 relative z-20">
-        <div className="flex justify-between items-center">
-          <motion.button 
-            onClick={() => navigate('/pricing')}
-            className="text-gray-300 hover:text-cyan-400 transition-colors"
-            whileHover={{ scale: 1.05 }}
+      <SignedIn>
+        <div className="absolute top-4 right-4 z-50">
+          <motion.div 
+            className="bg-gray-900/50 backdrop-blur-lg px-4 py-2 rounded-full text-sm"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
           >
-            Pricing
-          </motion.button>
-          
-          <div className="flex items-center gap-4">
-            <SignedOut>
+            {usage.tier === 'free' ? (
+              <span className="text-cyan-400">
+                Free Tokens: {usage.remainingTokens}/3
+              </span>
+            ) : (
+              <span className="text-purple-400">
+                ⚡ Premium Access (Unlimited)
+              </span>
+            )}
+          </motion.div>
+        </div>
+      </SignedIn>
+
+      {/* Navbar (Only for signed-out users) */}
+      <SignedOut>
+        <nav className="w-full max-w-4xl mb-10 relative z-20">
+          <div className="flex justify-between items-center">
+            <motion.button 
+              onClick={() => navigate('/pricing')}
+              className="text-gray-300 hover:text-cyan-400 transition-colors"
+              whileHover={{ scale: 1.05 }}
+            >
+              Pricing
+            </motion.button>
+            
+            <div className="flex items-center gap-4">
               <SignInButton mode="modal">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -200,26 +245,10 @@ export function Home() {
                   Sign Up
                 </motion.button>
               </SignUpButton>
-            </SignedOut>
-            <SignedIn>
-              <motion.div whileHover={{ scale: 1.05 }}>
-                <UserButton 
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "w-9 h-9",
-                      userButtonPopoverCard: "bg-gray-900 border border-gray-700/30 backdrop-blur-lg",
-                      userPreviewMainIdentifier: "text-cyan-400",
-                      userButtonPopoverActionButtonText: "text-gray-100 hover:text-cyan-400",
-                      rootBox: "cursor-pointer"
-                    }
-                  }}
-                />
-              </motion.div>
-            </SignedIn>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      </SignedOut>
 
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
