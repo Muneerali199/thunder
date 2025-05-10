@@ -32,7 +32,7 @@ app.post("/template", async (req, res) => {
       },
     ],
     generationConfig: {
-      maxOutputTokens: 200,
+      maxOutputTokens: 4096,
       temperature: 0.7,
     },
     systemInstruction:
@@ -73,8 +73,8 @@ app.post("/chat", async (req, res) => {
       parts: [{ text: msg.content }],
     })),
     generationConfig: {
-      maxOutputTokens: 9000,
-      temperature: 0.7,
+      maxOutputTokens: 100000,
+      temperature: 0.9,
     },
   });
 
@@ -107,8 +107,8 @@ app.post("/template", async (req, res) => {
       },
     ],
     generationConfig: {
-      maxOutputTokens: 200,
-      temperature: 0.7,
+      maxOutputTokens: 4096,
+      temperature: 0.9,
     },
     systemInstruction:
       "Return either node or react based on what you think this project should be. Only return a single word either 'node' or 'react'. Do not return anything extra",
@@ -157,8 +157,8 @@ app.post("/chat", async (req, res) => {
       parts: [{ text: msg.content }],
     })),
     generationConfig: {
-      maxOutputTokens: 10000,
-      temperature: 0.7,
+      maxOutputTokens: 100000,
+      temperature: 0.9,
     },
   });
 
