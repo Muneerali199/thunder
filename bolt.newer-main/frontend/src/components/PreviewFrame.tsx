@@ -3,11 +3,10 @@ import { useEffect, useState, useRef } from 'react';
 import { FileItem } from '../types';
 
 interface PreviewFrameProps {
-  files: FileItem[];
   webContainer: WebContainer | undefined;
 }
 
-export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
+export function PreviewFrame({ webContainer }: PreviewFrameProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -56,14 +55,40 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
     webContainer.on('server-ready', handleServerReady);
     webContainer.on('error', handleError);
 
-    // Trigger npm install to start the server
-    webContainer.spawn('npm', ['install']).catch(err => {
-      handleError(err);
-    });
+    const setupServer = async () => {
+      try {
+        let installProcess = await webContainer.spawn('npm', ['install']);
+        let installExitCode = await installProcess.exit;
 
-    // No 'off' method available, so rely on useEffect cleanup to prevent duplicate listeners
+        if (installExitCode !== 0) {
+          console.warn('Regular install failed, attempting forced install...');
+          installProcess = await webContainer.spawn('npm', ['install', '--force']);
+          installExitCode = await installProcess.exit;
+          
+          if (installExitCode !== 0) {
+            throw new Error(`Dependency installation failed (exit code ${installExitCode})`);
+          }
+        }
+
+        const devProcess = await webContainer.spawn('npm', ['run', 'dev']);
+        const devExitCode = await devProcess.exit;
+        
+        if (devExitCode !== 0) {
+          throw new Error(`Server failed to start (exit code ${devExitCode})`);
+        }
+      } catch (err) {
+        handleError(err);
+      }
+    };
+
+    setupServer();
+
     return () => {
-      // Since 'off' is not supported, we ensure listeners are only added once
+      // Remove event listeners if WebContainer API supports it
+      // Note: The WebContainer type definition might not include 'off' method
+      // This is a safe cleanup pattern regardless of API support
+      (webContainer as any).off?.('server-ready', handleServerReady);
+      (webContainer as any).off?.('error', handleError);
     };
   }, [webContainer]);
 
@@ -72,13 +97,29 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
       {error && !url && (
         <div className="text-center">
           <p className="mb-2 text-red-400">{error}</p>
+          <p className="text-sm">Check the console for more details</p>
         </div>
       )}
+
       {!url && !error && (
         <div className="text-center">
-          <p className="mb-2">Loading...</p>
+          <p className="mb-2">Installing dependencies...</p>
+          <div className="inline-block animate-spin">
+            <svg
+              stroke="currentColor"
+              fill="none"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-6 h-6"
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          </div>
         </div>
       )}
+
       {url && (
         <div ref={previewRef} className="relative h-full w-full">
           <iframe
@@ -86,6 +127,7 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
             height="100%"
             src={url}
             className="h-full w-full"
+            title="Live Preview"
           />
           <button
             onClick={toggleFullScreen}
@@ -101,12 +143,9 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className="text-gray-300 w-5 h-5"
-                height="1em"
-                width="1em"
-                xmlns="http://www.w3.org/2000/svg"
               >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             ) : (
               <svg
@@ -117,11 +156,8 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className="text-gray-300 w-5 h-5"
-                height="1em"
-                width="1em"
-                xmlns="http://www.w3.org/2000/svg"
               >
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2 2v-3M3 16v3a2 2 0 0 0 2 2h3" />
               </svg>
             )}
           </button>
