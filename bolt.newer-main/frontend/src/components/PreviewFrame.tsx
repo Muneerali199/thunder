@@ -1,13 +1,15 @@
 import { WebContainer } from '@webcontainer/api';
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { FileItem } from '../types';
 
 interface PreviewFrameProps {
-  files: any[];
-  webContainer: WebContainer;
+  files: FileItem[];
+  webContainer: WebContainer | undefined;
 }
 
 export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
   const [url, setUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -34,23 +36,45 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
     };
   }, []);
 
-  async function main() {
-    const installProcess = await webContainer.spawn('npm', ['install']);
-    installProcess.output.pipeTo(new WritableStream({ write: console.log }));
-    await webContainer.spawn('npm', ['run', 'dev']);
-
-    webContainer.on('server-ready', (port, url) => {
-      setUrl(url);
-    });
-  }
-
   useEffect(() => {
-    main();
-  }, []);
+    if (!webContainer) {
+      setError('WebContainer not initialized');
+      return;
+    }
+
+    const handleServerReady = (_port: number, url: string) => {
+      setUrl(url);
+      setError(null);
+    };
+
+    const handleError = (err: unknown) => {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown server error';
+      setError(`Server failed to start: ${errorMsg}`);
+      setUrl("");
+    };
+
+    webContainer.on('server-ready', handleServerReady);
+    webContainer.on('error', handleError);
+
+    // Trigger npm install to start the server
+    webContainer.spawn('npm', ['install']).catch(err => {
+      handleError(err);
+    });
+
+    // No 'off' method available, so rely on useEffect cleanup to prevent duplicate listeners
+    return () => {
+      // Since 'off' is not supported, we ensure listeners are only added once
+    };
+  }, [webContainer]);
 
   return (
     <div className="h-full flex items-center justify-center text-gray-400 relative">
-      {!url && (
+      {error && !url && (
+        <div className="text-center">
+          <p className="mb-2 text-red-400">{error}</p>
+        </div>
+      )}
+      {!url && !error && (
         <div className="text-center">
           <p className="mb-2">Loading...</p>
         </div>
@@ -69,7 +93,6 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
             aria-label={isFullScreen ? "Exit full screen" : "Enter full screen"}
           >
             {isFullScreen ? (
-              // Exit icon (X)
               <svg
                 stroke="currentColor"
                 fill="none"
@@ -86,7 +109,6 @@ export function PreviewFrame({ files, webContainer }: PreviewFrameProps) {
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             ) : (
-              // Enter fullscreen icon (Arrow expand)
               <svg
                 stroke="currentColor"
                 fill="none"

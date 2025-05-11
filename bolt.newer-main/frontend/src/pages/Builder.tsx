@@ -12,8 +12,208 @@ import { BACKEND_URL } from '../config';
 import { parseXml } from '../steps';
 import { useWebContainer } from '../hooks/useWebContainer';
 import { Loader } from '../components/Loader';
+import { WebContainer } from '@webcontainer/api';
 
-// Lightning Component (from Home page)
+// Terminal Component
+const Terminal: React.FC<{
+  webContainer: WebContainer | undefined;
+  onCommand: (command: string) => void;
+  files: FileItem[];
+  setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
+  prompt: string;
+}> = ({ webContainer, onCommand, files, setFiles, prompt }) => {
+  const [command, setCommand] = useState('');
+  const [output, setOutput] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  // Handle command execution
+  const executeCommand = async (cmd: string) => {
+    if (!webContainer) {
+      const errorMsg = 'Error: WebContainer not initialized';
+      setOutput(prev => [...prev, errorMsg]);
+      setError(errorMsg);
+      return;
+    }
+
+    const args = cmd.trim().split(' ');
+    const commandName = args[0];
+    const commandArgs = args.slice(1);
+
+    setOutput(prev => [...prev, `> ${cmd}`]);
+    setError(null); // Clear previous errors
+
+    try {
+      let process;
+      if (commandName === 'bolt.new') {
+        setOutput(prev => [...prev, 'Executing bolt.new...']);
+        process = await webContainer.spawn('npm', ['init', '-y']);
+      } else {
+        process = await webContainer.spawn(commandName, commandArgs);
+      }
+
+      process.output.pipeTo(new WritableStream({
+        write(chunk) {
+          setOutput(prev => [...prev, chunk]);
+        }
+      }));
+
+      const exitCode = await process.exit;
+      if (exitCode !== 0) {
+        const errorMsg = `Command "${cmd}" failed with exit code ${exitCode}`;
+        setOutput(prev => [...prev, errorMsg]);
+        setError(errorMsg);
+      } else if (commandName === 'bolt.new') {
+        setOutput(prev => [...prev, 'Project initialized with bolt.new']);
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const fullError = `Error executing "${cmd}": ${errorMessage}`;
+      setOutput(prev => [...prev, fullError]);
+      setError(fullError);
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (command.trim()) {
+      onCommand(command);
+      executeCommand(command);
+      setCommand('');
+    }
+  };
+
+  // Fix error by calling /template endpoint
+  const handleFixError = async () => {
+    if (!error) return;
+    try {
+      setOutput(prev => [...prev, 'Attempting to fix error...']);
+      const response = await axios.post(`${BACKEND_URL}/template`, {
+        prompt: prompt.trim(),
+        error
+      });
+      const { files: newFiles } = response.data;
+      setFiles(newFiles);
+      setOutput(prev => [...prev, 'Project files updated to fix error']);
+      setError(null); // Clear error
+      // Remount files to WebContainer
+      if (webContainer) {
+        const mountStructure = createMountStructure(newFiles);
+        await webContainer.mount(mountStructure);
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fix error';
+      setOutput(prev => [...prev, `Error fixing project: ${errorMessage}`]);
+      setError(`Error fixing project: ${errorMessage}`);
+    }
+  };
+
+  // Helper to create mount structure (same as in Builder)
+  const createMountStructure = (files: FileItem[]): Record<string, any> => {
+    const mountStructure: Record<string, any> = {};
+    const processFile = (file: FileItem, isRootFolder: boolean) => {
+      if (file.type === 'folder') {
+        mountStructure[file.name] = {
+          directory: file.children ?
+            Object.fromEntries(
+              file.children.map(child => [child.name, processFile(child, false)])
+            )
+            : {}
+        };
+      } else if (file.type === 'file') {
+        if (isRootFolder) {
+          mountStructure[file.name] = {
+            file: {
+              contents: file.content || ''
+            }
+          };
+        } else {
+          return {
+            file: {
+              contents: file.content || ''
+            }
+          };
+        }
+      }
+      return mountStructure[file.name];
+    };
+    files.forEach(file => processFile(file, true));
+    return mountStructure;
+  };
+
+  // Scroll to bottom of terminal output
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [output]);
+
+  // Capture installation output and server URL
+  useEffect(() => {
+    if (!webContainer) return;
+
+    // Capture npm install output
+    webContainer.spawn('npm', ['install']).then(installProcess => {
+      installProcess.output.pipeTo(new WritableStream({
+        write(chunk) {
+          setOutput(prev => [...prev, chunk]);
+        }
+      }));
+      installProcess.exit.then(exitCode => {
+        if (exitCode !== 0) {
+          const errorMsg = `npm install failed with exit code ${exitCode}`;
+          setOutput(prev => [...prev, errorMsg]);
+          setError(errorMsg);
+        }
+      });
+    });
+
+    // Capture server URL
+    webContainer.on('server-ready', (_port: number, url: string) => {
+      setOutput(prev => [...prev, `Server running at: ${url}`]);
+    });
+  }, [webContainer]);
+
+  return (
+    <div className="bg-gray-900/80 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[20vh] min-h-[100px] flex flex-col shadow-lg shadow-blue-500/30">
+      <div className="flex-1 overflow-y-auto mb-2 font-mono text-sm text-blue-100" ref={terminalRef}>
+        {output.map((line, index) => (
+          <div key={index} className={`whitespace-pre-wrap ${line.includes('Error') ? 'text-red-400' : ''}`}>
+            {line}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <form onSubmit={handleSubmit} className="flex flex-1">
+          <input
+            type="text"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            placeholder="Enter command (e.g., npm install, bolt.new)"
+            className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-lg text-sm font-medium"
+          >
+            Run
+          </button>
+        </form>
+        {error && (
+          <button
+            onClick={handleFixError}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            Fix Error
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Lightning Component (unchanged)
 const Lightning: React.FC<{
   hue?: number;
   xOffset?: number;
@@ -197,15 +397,6 @@ const Lightning: React.FC<{
   return <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0" />;
 };
 
-const MOCK_FILE_CONTENT = `// This is a sample file content
-import React from 'react';
-
-function Component() {
-  return <div>Hello World</div>;
-}
-
-export default Component;`;
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -220,7 +411,7 @@ export function Builder() {
   const location = useLocation();
   const { prompt } = location.state as { prompt: string };
   const [userPrompt, setPrompt] = useState("");
-  const [llmMessages, setLlmMessages] = useState<{role: "user" | "assistant", content: string;}[]>([]);
+  const [llmMessages, setLlmMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
   const webcontainer = useWebContainer();
@@ -231,11 +422,16 @@ export function Builder() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
 
+  // Handle terminal commands
+  const handleTerminalCommand = (command: string) => {
+    setLlmMessages(prev => [...prev, { role: "user", content: `Terminal command: ${command}` }]);
+  };
+
   useEffect(() => {
     let originalFiles = [...files];
     let updateHappened = false;
-    
-    steps.filter(({status}) => status === "pending").forEach(step => {
+
+    steps.filter(({ status }) => status === "pending").forEach(step => {
       updateHappened = true;
       if (step?.type === StepType.CreateFile) {
         let parsedPath = step.path?.split("/") ?? [];
@@ -243,7 +439,7 @@ export function Builder() {
         let finalAnswerRef = currentFileStructure;
 
         let currentFolder = "";
-        while(parsedPath.length) {
+        while (parsedPath.length) {
           currentFolder = `${currentFolder}/${parsedPath[0]}`;
           let currentFolderName = parsedPath[0];
           parsedPath = parsedPath.slice(1);
@@ -290,13 +486,13 @@ export function Builder() {
     const createMountStructure = (files: FileItem[]): Record<string, any> => {
       const mountStructure: Record<string, any> = {};
 
-      const processFile = (file: FileItem, isRootFolder: boolean) => {  
+      const processFile = (file: FileItem, isRootFolder: boolean) => {
         if (file.type === 'folder') {
           mountStructure[file.name] = {
-            directory: file.children ? 
+            directory: file.children ?
               Object.fromEntries(
                 file.children.map(child => [child.name, processFile(child, false)])
-              ) 
+              )
               : {}
           };
         } else if (file.type === 'file') {
@@ -330,7 +526,7 @@ export function Builder() {
       prompt: prompt.trim()
     });
     setTemplateSet(true);
-    
+
     const { prompts, uiPrompts } = response.data;
 
     setSteps(parseXml(uiPrompts[0]).map((x: Step) => ({
@@ -369,20 +565,20 @@ export function Builder() {
       {/* Lightning Background */}
       <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />
 
-      <motion.header 
+      <motion.header
         className="bg-gray-900/80 backdrop-blur-2xl border-b border-blue-500/40 px-6 py-4 relative z-10"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100 }}
       >
-        <motion.h1 
+        <motion.h1
           className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
           Thunder
         </motion.h1>
-        <motion.p 
+        <motion.p
           className="text-sm text-blue-200 mt-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -391,19 +587,19 @@ export function Builder() {
           Crafting: <span className="text-blue-400">{prompt}</span>
         </motion.p>
       </motion.header>
-      
+
       <div className="flex-1 overflow-hidden relative z-10">
-        <motion.div 
+        <motion.div
           className="h-full grid grid-cols-4 gap-6 p-6"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          <motion.div 
+          <motion.div
             className="col-span-1 space-y-6"
             variants={itemVariants}
           >
-            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[75vh] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30">
+            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30">
               <div className="flex-1 overflow-y-auto pr-2">
                 <StepsList
                   steps={steps}
@@ -411,11 +607,11 @@ export function Builder() {
                   onStepClick={setCurrentStep}
                 />
               </div>
-              
+
               <div className="pt-4 border-t border-blue-500/40">
                 <div className="flex flex-col gap-3">
                   {(loading || !templateSet) && (
-                    <motion.div 
+                    <motion.div
                       className="flex items-center justify-center p-4"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -423,21 +619,21 @@ export function Builder() {
                       <Loader />
                     </motion.div>
                   )}
-                  
+
                   {!(loading || !templateSet) && (
-                    <motion.div 
+                    <motion.div
                       className="flex flex-col gap-2"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                     >
-                      <textarea 
+                      <textarea
                         value={userPrompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         placeholder="Add more instructions..."
                         className="w-full bg-gray-800/50 border border-blue-500/40 rounded-lg p-3 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70 transition-all resize-none"
                         rows={3}
                       />
-                      <motion.button 
+                      <motion.button
                         onClick={async () => {
                           const newMessage = {
                             role: "user" as const,
@@ -450,12 +646,12 @@ export function Builder() {
                           });
                           setLoading(false);
 
-                          setLlmMessages(x => [...x, newMessage]);
-                          setLlmMessages(x => [...x, {
+                          setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, newMessage]);
+                          setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, {
                             role: "assistant",
                             content: stepsResponse.data.response
                           }]);
-                          
+
                           setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
                             ...x,
                             status: "pending" as const
@@ -474,32 +670,44 @@ export function Builder() {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="col-span-1"
             variants={itemVariants}
             transition={{ delay: 0.1 }}
           >
             <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] shadow-lg shadow-blue-500/30">
-              <FileExplorer 
-                files={files} 
+              <FileExplorer
+                files={files}
                 onFileSelect={setSelectedFile}
               />
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="col-span-2"
             variants={itemVariants}
             transition={{ delay: 0.2 }}
           >
             <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 h-[calc(100vh-8rem)] flex flex-col shadow-lg shadow-blue-500/30">
               <TabView activeTab={activeTab} onTabChange={setActiveTab} />
-              
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden flex flex-col">
                 {activeTab === 'code' ? (
-                  <CodeEditor file={selectedFile} />
+                  <div className="flex-1">
+                    <CodeEditor file={selectedFile} />
+                  </div>
                 ) : (
-                  <PreviewFrame webContainer={webcontainer} files={files} />
+                  <>
+                    <div className="flex-1">
+                      <PreviewFrame webContainer={webcontainer} files={files} />
+                    </div>
+                    <Terminal
+                      webContainer={webcontainer}
+                      onCommand={handleTerminalCommand}
+                      files={files}
+                      setFiles={setFiles}
+                      prompt={prompt}
+                    />
+                  </>
                 )}
               </div>
             </div>
