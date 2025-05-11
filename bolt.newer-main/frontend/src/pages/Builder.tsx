@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { StepsList } from '../components/StepsList';
@@ -11,8 +11,191 @@ import axios from 'axios';
 import { BACKEND_URL } from '../config';
 import { parseXml } from '../steps';
 import { useWebContainer } from '../hooks/useWebContainer';
-import { FileNode } from '@webcontainer/api';
 import { Loader } from '../components/Loader';
+
+// Lightning Component (from Home page)
+const Lightning: React.FC<{
+  hue?: number;
+  xOffset?: number;
+  speed?: number;
+  intensity?: number;
+  size?: number;
+}> = ({ hue = 230, xOffset = 0, speed = 0.8, intensity = 1.2, size = 1.5 }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+    };
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    const gl = canvas.getContext("webgl");
+    if (!gl) {
+      console.error("WebGL not supported");
+      return;
+    }
+
+    const vertexShaderSource = `
+      attribute vec2 aPosition;
+      void main() {
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentShaderSource = `
+      precision mediump float;
+      uniform vec2 iResolution;
+      uniform float iTime;
+      uniform float uHue;
+      uniform float uXOffset;
+      uniform float uSpeed;
+      uniform float uIntensity;
+      uniform float uSize;
+      
+      #define OCTAVE_COUNT 10
+
+      vec3 hsv2rgb(vec3 c) {
+          vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0,4.0,2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+          return c.z * mix(vec3(1.0), rgb, c.y);
+      }
+
+      float hash11(float p) {
+          p = fract(p * .1031);
+          p *= p + 33.33;
+          p *= p + p;
+          return fract(p);
+      }
+
+      float hash12(vec2 p) {
+          vec3 p3 = fract(vec3(p.xyx) * .1031);
+          p3 += dot(p3, p3.yzx + 33.33);
+          return fract((p3.x + p3.y) * p3.z);
+      }
+
+      mat2 rotate2d(float theta) {
+          float c = cos(theta);
+          float s = sin(theta);
+          return mat2(c, -s, s, c);
+      }
+
+      float noise(vec2 p) {
+          vec2 ip = floor(p);
+          vec2 fp = fract(p);
+          float a = hash12(ip);
+          float b = hash12(ip + vec2(1.0, 0.0));
+          float c = hash12(ip + vec2(0.0, 1.0));
+          float d = hash12(ip + vec2(1.0, 1.0));
+          
+          vec2 t = smoothstep(0.0, 1.0, fp);
+          return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
+      }
+
+      float fbm(vec2 p) {
+          float value = 0.0;
+          float amplitude = 0.5;
+          for (int i = 0; i < OCTAVE_COUNT; ++i) {
+              value += amplitude * noise(p);
+              p *= rotate2d(0.45);
+              p *= 2.0;
+              amplitude *= 0.5;
+          }
+          return value;
+      }
+
+      void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
+          vec2 uv = fragCoord / iResolution.xy;
+          uv = 2.0 * uv - 1.0;
+          uv.x *= iResolution.x / iResolution.y;
+          uv.x += uXOffset;
+          
+          uv += 2.0 * fbm(uv * uSize + 0.8 * iTime * uSpeed) - 1.0;
+          
+          float dist = abs(uv.x);
+          vec3 baseColor = hsv2rgb(vec3(uHue / 360.0, 0.7, 0.8));
+          vec3 col = baseColor * pow(mix(0.0, 0.07, hash11(iTime * uSpeed)) / dist, 1.0) * uIntensity;
+          col = pow(col, vec3(1.0));
+          fragColor = vec4(col, 1.0);
+      }
+
+      void main() {
+          mainImage(gl_FragColor, gl_FragCoord.xy);
+      }
+    `;
+
+    const compileShader = (source: string, type: number): WebGLShader | null => {
+      const shader = gl.createShader(type);
+      if (!shader) return null;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error("Shader compile error:", gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    };
+
+    const vertexShader = compileShader(vertexShaderSource, gl.VERTEX_SHADER);
+    const fragmentShader = compileShader(fragmentShaderSource, gl.FRAGMENT_SHADER);
+    if (!vertexShader || !fragmentShader) return;
+
+    const program = gl.createProgram();
+    if (!program) return;
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error("Program linking error:", gl.getProgramInfoLog(program));
+      return;
+    }
+    gl.useProgram(program);
+
+    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+    const vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    const aPosition = gl.getAttribLocation(program, "aPosition");
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+    const iResolutionLocation = gl.getUniformLocation(program, "iResolution");
+    const iTimeLocation = gl.getUniformLocation(program, "iTime");
+    const uHueLocation = gl.getUniformLocation(program, "uHue");
+    const uXOffsetLocation = gl.getUniformLocation(program, "uXOffset");
+    const uSpeedLocation = gl.getUniformLocation(program, "uSpeed");
+    const uIntensityLocation = gl.getUniformLocation(program, "uIntensity");
+    const uSizeLocation = gl.getUniformLocation(program, "uSize");
+
+    const startTime = performance.now();
+    const render = () => {
+      resizeCanvas();
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(iResolutionLocation, canvas.width, canvas.height);
+      const currentTime = performance.now();
+      gl.uniform1f(iTimeLocation, (currentTime - startTime) / 1000.0);
+      gl.uniform1f(uHueLocation, hue);
+      gl.uniform1f(uXOffsetLocation, xOffset);
+      gl.uniform1f(uSpeedLocation, speed);
+      gl.uniform1f(uIntensityLocation, intensity);
+      gl.uniform1f(uSizeLocation, size);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      requestAnimationFrame(render);
+    };
+    requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+    };
+  }, [hue, xOffset, speed, intensity, size]);
+
+  return <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0" />;
+};
 
 const MOCK_FILE_CONTENT = `// This is a sample file content
 import React from 'react';
@@ -59,9 +242,9 @@ export function Builder() {
         let currentFileStructure = [...originalFiles];
         let finalAnswerRef = currentFileStructure;
 
-        let currentFolder = ""
+        let currentFolder = "";
         while(parsedPath.length) {
-          currentFolder =  `${currentFolder}/${parsedPath[0]}`;
+          currentFolder = `${currentFolder}/${parsedPath[0]}`;
           let currentFolderName = parsedPath[0];
           parsedPath = parsedPath.slice(1);
 
@@ -150,7 +333,6 @@ export function Builder() {
     
     const { prompts, uiPrompts } = response.data;
 
-    // Fixed line 156: Added missing closing parenthesis
     setSteps(parseXml(uiPrompts[0]).map((x: Step) => ({
       ...x,
       status: "pending"
@@ -165,7 +347,6 @@ export function Builder() {
     });
 
     setLoading(false);
-    // Fixed line 170: Added proper comma and closing parenthesis
     setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
       ...x,
       status: "pending" as const
@@ -184,36 +365,34 @@ export function Builder() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-950 flex flex-col">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/20 to-pink-900/20 animate-aurora-bg opacity-70" />
-        <div className="absolute inset-0 bg-gradient-to-tl from-cyan-700/10 via-purple-700/10 to-pink-700/10 animate-aurora-bg-delayed opacity-50" />
-      </div>
+    <div className="min-h-screen bg-[#0F172A] flex flex-col relative overflow-hidden font-sans">
+      {/* Lightning Background */}
+      <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />
 
       <motion.header 
-        className="bg-gray-900/50 backdrop-blur-lg border-b border-gray-700/30 px-6 py-4"
+        className="bg-gray-900/80 backdrop-blur-2xl border-b border-blue-500/40 px-6 py-4 relative z-10"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100 }}
       >
         <motion.h1 
-          className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent"
+          className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
           Arcane Builder
         </motion.h1>
         <motion.p 
-          className="text-sm text-gray-400 mt-1"
+          className="text-sm text-blue-200 mt-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          Crafting: <span className="text-cyan-300">{prompt}</span>
+          Crafting: <span className="text-blue-400">{prompt}</span>
         </motion.p>
       </motion.header>
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative z-10">
         <motion.div 
           className="h-full grid grid-cols-4 gap-6 p-6"
           variants={containerVariants}
@@ -221,10 +400,10 @@ export function Builder() {
           animate="visible"
         >
           <motion.div 
-            className="col-span-1 space-y-6 overflow-auto"
+            className="col-span-1 space-y-6"
             variants={itemVariants}
           >
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-xl p-4 border border-gray-700/30 h-[75vh] overflow-hidden flex flex-col">
+            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[75vh] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30">
               <div className="flex-1 overflow-y-auto pr-2">
                 <StepsList
                   steps={steps}
@@ -233,7 +412,7 @@ export function Builder() {
                 />
               </div>
               
-              <div className="pt-4 border-t border-gray-700/30">
+              <div className="pt-4 border-t border-blue-500/40">
                 <div className="flex flex-col gap-3">
                   {(loading || !templateSet) && (
                     <motion.div 
@@ -255,7 +434,7 @@ export function Builder() {
                         value={userPrompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         placeholder="Add more instructions..."
-                        className="w-full bg-gray-800/50 border border-gray-700/30 rounded-lg p-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none"
+                        className="w-full bg-gray-800/50 border border-blue-500/40 rounded-lg p-3 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70 transition-all resize-none"
                         rows={3}
                       />
                       <motion.button 
@@ -282,9 +461,9 @@ export function Builder() {
                             status: "pending" as const
                           }))]);
                         }}
-                        whileHover={{ scale: 1.05 }}
+                        whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
                         whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-r from-cyan-500/80 to-purple-600/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-cyan-500/20 hover:shadow-purple-500/30 transition-all"
+                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
                       >
                         Enhance Request
                       </motion.button>
@@ -300,7 +479,7 @@ export function Builder() {
             variants={itemVariants}
             transition={{ delay: 0.1 }}
           >
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-xl p-4 border border-gray-700/30 h-[calc(100vh-8rem)]">
+            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] shadow-lg shadow-blue-500/30">
               <FileExplorer 
                 files={files} 
                 onFileSelect={setSelectedFile}
@@ -313,7 +492,7 @@ export function Builder() {
             variants={itemVariants}
             transition={{ delay: 0.2 }}
           >
-            <div className="bg-gray-900/50 backdrop-blur-lg rounded-xl border border-gray-700/30 h-[calc(100vh-8rem)] flex flex-col">
+            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 h-[calc(100vh-8rem)] flex flex-col shadow-lg shadow-blue-500/30">
               <TabView activeTab={activeTab} onTabChange={setActiveTab} />
               
               <div className="flex-1 overflow-hidden">
@@ -330,18 +509,13 @@ export function Builder() {
 
       <style>
         {`
-          @keyframes aurora {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+          @keyframes pulse-glow {
+            0% { box-shadow: 0 0 10px rgba(96, 165, 250, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(96, 165, 250, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(96, 165, 250, 0.5); }
           }
-          .animate-aurora-bg {
-            background-size: 200% 200%;
-            animation: aurora 10s ease infinite;
-          }
-          .animate-aurora-bg-delayed {
-            background-size: 200% 200%;
-            animation: aurora 14s ease infinite 2s;
+          .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
           }
         `}
       </style>
