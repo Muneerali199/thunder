@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, File, Settings, LayoutDashboard, Plus, History, DollarSign } from 'lucide-react';
+import { Home as HomeIcon, File, Settings, LayoutDashboard, Plus, History, DollarSign, Eye } from 'lucide-react';
 
-// Lightning Component (from provided code)
+// Lightning Component
 const Lightning: React.FC<{
   hue?: number;
   xOffset?: number;
@@ -206,6 +206,12 @@ type UserMetadata = {
   remainingTokens: number;
 };
 
+type Project = {
+  id: string;
+  prompt: string;
+  createdAt: string;
+};
+
 export function Home() {
   const [prompt, setPrompt] = useState('');
   const navigate = useNavigate();
@@ -217,6 +223,22 @@ export function Home() {
     remainingTokens: 3 
   });
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  const loadProjects = () => {
+    try {
+      const storedProjects = localStorage.getItem('projects');
+      if (storedProjects) {
+        const parsedProjects = JSON.parse(storedProjects);
+        console.log('Loaded projects from localStorage:', parsedProjects);
+        setProjects(parsedProjects);
+      } else {
+        console.log('No projects found in localStorage');
+      }
+    } catch (error) {
+      console.error('Error loading projects from localStorage:', error);
+    }
+  };
 
   useEffect(() => {
     const loadUsage = async () => {
@@ -228,11 +250,26 @@ export function Home() {
         });
       } else {
         const localUsage = localStorage.getItem('usage');
-        if (localUsage) setUsage(JSON.parse(localUsage));
+        if (localUsage) {
+          setUsage(JSON.parse(localUsage));
+        }
       }
     };
-    
+
     loadUsage();
+    loadProjects();
+
+    // Listen for storage changes (e.g., from other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'projects') {
+        loadProjects();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [isSignedIn, user]);
 
   const recommendations = [
@@ -262,10 +299,31 @@ export function Home() {
         remainingTokens: usage.remainingTokens - 1
       };
 
+      const newProject: Project = {
+        id: crypto.randomUUID(),
+        prompt,
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedProjects = [newProject, ...projects];
+      try {
+        localStorage.setItem('projects', JSON.stringify(updatedProjects));
+        console.log('Saved project to localStorage:', newProject);
+        setProjects(updatedProjects);
+      } catch (error) {
+        console.error('Error saving project to localStorage:', error);
+        alert('Failed to save project history. Please try again.');
+        return;
+      }
+
       setUsage(newUsage);
       
       if (user) {
-        await user.update({ unsafeMetadata: newUsage });
+        try {
+          await user.update({ unsafeMetadata: newUsage });
+        } catch (error) {
+          console.error('Error updating user metadata:', error);
+        }
       } else {
         localStorage.setItem('usage', JSON.stringify(newUsage));
       }
@@ -278,6 +336,10 @@ export function Home() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) console.log('Uploaded file:', file);
+  };
+
+  const viewProject = (projectPrompt: string) => {
+    navigate('/builder', { state: { prompt: projectPrompt } });
   };
 
   return (
@@ -358,10 +420,27 @@ export function Home() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 className="w-full mt-4 bg-blue-500/30 hover:bg-blue-500/40 text-blue-400 p-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                onClick={() => navigate('/')}
               >
                 <Plus className="h-5 w-5" />
                 {isSidebarExpanded && <span className="text-sm">New Project</span>}
               </motion.button>
+
+              {/* Last Project */}
+              {projects.length > 0 && (
+                <motion.button
+                  onClick={() => viewProject(projects[0].prompt)}
+                  whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+                  className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
+                >
+                  <Eye className="h-5 w-5 flex-shrink-0" />
+                  {isSidebarExpanded && (
+                    <span className="text-sm truncate">
+                      Last: {projects[0].prompt.substring(0, 20)}{projects[0].prompt.length > 20 ? '...' : ''}
+                    </span>
+                  )}
+                </motion.button>
+              )}
             </nav>
 
             {/* Bottom Section */}
@@ -580,6 +659,59 @@ export function Home() {
                 {rec}
               </motion.button>
             ))}
+          </motion.div>
+        </SignedIn>
+
+        {/* Project History Section */}
+        <SignedIn>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.7, ease: [0.6, -0.05, 0.01, 0.99] }}
+            className="bg-gray-900/60 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-8 shadow-2xl shadow-blue-500/30"
+          >
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-6">
+              Your Project History
+            </h2>
+            {projects.length === 0 ? (
+              <p className="text-blue-200 text-center">No projects yet. Start creating!</p>
+            ) : (
+              <div className="space-y-4">
+                {projects.slice(0, 5).map((project, index) => (
+                  <motion.div
+                    key={project.id}
+                    className="flex justify-between items-center bg-gray-800/50 p-4 rounded-lg border border-blue-500/20"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 * index }}
+                  >
+                    <div>
+                      <p className="text-blue-100 font-medium">{project.prompt}</p>
+                      <p className="text-blue-400 text-sm">
+                        Created: {new Date(project.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <motion.button
+                      onClick={() => viewProject(project.prompt)}
+                      whileHover={{ scale: 1.1, boxShadow: '0 0 15px rgba(96, 165, 250, 0.6)' }}
+                      whileTap={{ scale: 0.9 }}
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white p-2 rounded-full shadow-lg hover:shadow-purple-600/50 transition-all"
+                    >
+                      <Eye className="h-5 w-5" />
+                    </motion.button>
+                  </motion.div>
+                ))}
+                {projects.length > 5 && (
+                  <motion.button
+                    onClick={() => navigate('/history')}
+                    whileHover={{ scale: 1.05 }}
+                    className="w-full text-blue-400 hover:text-blue-300 mt-4"
+                  >
+                    View All Projects
+                  </motion.button>
+                )}
+              </div>
+            )}
           </motion.div>
         </SignedIn>
 

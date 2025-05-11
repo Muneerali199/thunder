@@ -380,7 +380,7 @@ export function Builder() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          Arcane Builder
+          Thunder
         </motion.h1>
         <motion.p 
           className="text-sm text-blue-200 mt-1"
