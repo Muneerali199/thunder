@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, File, Settings, LayoutDashboard, Plus, History, DollarSign, Eye } from 'lucide-react';
+import { Home as HomeIcon, File, Settings, LayoutDashboard, Plus, History, DollarSign, Eye, X } from 'lucide-react';
 
 // Lightning Component
 const Lightning: React.FC<{
@@ -203,7 +203,8 @@ const ThunderLogoSVG = () => (
 
 type UserMetadata = {
   tier: 'free' | 'pro' | 'enterprise';
-  remainingTokens: number;
+  dailyTokens: number;
+  lastReset: string;
 };
 
 type Project = {
@@ -220,10 +221,12 @@ export function Home() {
   const { user } = useUser();
   const [usage, setUsage] = useState<UserMetadata>({ 
     tier: 'free', 
-    remainingTokens: 3 
+    dailyTokens: 3,
+    lastReset: new Date().toISOString().split('T')[0]
   });
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [showPremiumPopup, setShowPremiumPopup] = useState(false);
 
   const loadProjects = () => {
     try {
@@ -240,26 +243,57 @@ export function Home() {
     }
   };
 
+  const resetDailyTokensIfNeeded = (currentMetadata: UserMetadata): UserMetadata => {
+    const today = new Date().toISOString().split('T')[0];
+    if (currentMetadata.lastReset !== today) {
+      console.log('Resetting daily tokens for new day:', today);
+      return {
+        ...currentMetadata,
+        dailyTokens: 3,
+        lastReset: today
+      };
+    }
+    return currentMetadata;
+  };
+
   useEffect(() => {
     const loadUsage = async () => {
+      let newUsage: UserMetadata;
       if (isSignedIn && user) {
         const metadata = user.unsafeMetadata as UserMetadata;
-        setUsage({
+        newUsage = resetDailyTokensIfNeeded({
           tier: metadata.tier || 'free',
-          remainingTokens: metadata.remainingTokens || 3
+          dailyTokens: metadata.dailyTokens ?? 3,
+          lastReset: metadata.lastReset || new Date().toISOString().split('T')[0]
         });
+        setUsage(newUsage);
+        if (newUsage.dailyTokens !== metadata.dailyTokens || newUsage.lastReset !== metadata.lastReset) {
+          try {
+            await user.update({ unsafeMetadata: newUsage });
+            console.log('Updated user metadata:', newUsage);
+          } catch (error) {
+            console.error('Error updating user metadata:', error);
+          }
+        }
       } else {
         const localUsage = localStorage.getItem('usage');
         if (localUsage) {
-          setUsage(JSON.parse(localUsage));
+          newUsage = resetDailyTokensIfNeeded(JSON.parse(localUsage));
+        } else {
+          newUsage = {
+            tier: 'free',
+            dailyTokens: 3,
+            lastReset: new Date().toISOString().split('T')[0]
+          };
         }
+        setUsage(newUsage);
+        localStorage.setItem('usage', JSON.stringify(newUsage));
       }
     };
 
     loadUsage();
     loadProjects();
 
-    // Listen for storage changes (e.g., from other tabs)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'projects') {
         loadProjects();
@@ -287,16 +321,15 @@ export function Home() {
       return;
     }
 
-    if (usage.remainingTokens <= 0 && usage.tier === 'free') {
-      alert('You\'ve reached your free limit. Please upgrade to continue.');
-      navigate('/pricing');
+    if (usage.tier === 'free' && usage.dailyTokens <= 0) {
+      setShowPremiumPopup(true);
       return;
     }
 
     if (prompt.trim()) {
       const newUsage = {
         ...usage,
-        remainingTokens: usage.remainingTokens - 1
+        dailyTokens: usage.tier === 'free' ? usage.dailyTokens - 1 : usage.dailyTokens
       };
 
       const newProject: Project = {
@@ -321,6 +354,7 @@ export function Home() {
       if (user) {
         try {
           await user.update({ unsafeMetadata: newUsage });
+          console.log('Updated user metadata:', newUsage);
         } catch (error) {
           console.error('Error updating user metadata:', error);
         }
@@ -348,6 +382,61 @@ export function Home() {
     }`}>
       {/* Lightning Background */}
       <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />
+
+      {/* Premium Popup */}
+      {showPremiumPopup && (
+        <motion.div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-gray-900/90 border border-blue-500/40 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-blue-500/30"
+            initial={{ scale: 0.8, y: 50 }}
+            animate={{ scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Daily Limit Reached
+              </h2>
+              <motion.button
+                onClick={() => setShowPremiumPopup(false)}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="text-blue-200 hover:text-blue-400"
+              >
+                <X className="h-6 w-6" />
+              </motion.button>
+            </div>
+            <p className="text-blue-200 mb-6">
+              You've used all 3 free daily chats. Upgrade to Premium for unlimited access and unlock more features!
+            </p>
+            <div className="flex justify-end gap-4">
+              <motion.button
+                onClick={() => setShowPremiumPopup(false)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gray-700/50 text-blue-200 px-6 py-2 rounded-lg hover:bg-gray-600/50 transition-all"
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                onClick={() => {
+                  setShowPremiumPopup(false);
+                  navigate('/pricing');
+                }}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(96, 165, 250, 0.6)' }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-purple-600/50 transition-all"
+              >
+                Upgrade to Premium
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Sidebar */}
       <SignedIn>
@@ -486,7 +575,7 @@ export function Home() {
           >
             {usage.tier === 'free' ? (
               <span className="text-blue-400">
-                Free Tokens: {usage.remainingTokens}/3
+                Daily Chats: {usage.dailyTokens}/3
               </span>
             ) : (
               <span className="text-purple-400">
@@ -716,7 +805,7 @@ export function Home() {
         </SignedIn>
 
         {/* Upgrade Banner */}
-        {usage.tier === 'free' && usage.remainingTokens <= 1 && (
+        {usage.tier === 'free' && usage.dailyTokens <= 1 && (
           <motion.div 
             className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 rounded-xl mt-8"
             initial={{ scale: 0.9 }}
