@@ -10,13 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.31.1",
+    "@clerk/clerk-react": "^5.31.2",
     "@monaco-editor/react": "^4.6.0",
+    "@octokit/core": "^6.1.5",
     "@react-three/drei": "^10.0.7",
     "@react-three/fiber": "^9.1.2",
     "@types/xml2js": "^0.4.14",
-    "@webcontainer/api": "^1.5.1",
+    "@webcontainer/api": "^1.6.1",
     "axios": "^1.7.8",
+    "crypto-js": "^4.2.0",
     "events": "^3.3.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.9.7",
@@ -31,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/crypto-js": "^4.2.2",
     "@types/file-saver": "^2.0.7",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

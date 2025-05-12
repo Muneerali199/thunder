@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { StepsList } from '../components/StepsList';
 import { FileExplorer } from '../components/FileExplorer';
@@ -14,15 +14,22 @@ import { useWebContainer } from '../hooks/useWebContainer';
 import { Loader } from '../components/Loader';
 import { WebContainer } from '@webcontainer/api';
 import { Lightning } from '../components/lightning';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import { Octokit } from '@octokit/core';
+import CryptoJS from 'crypto-js';
 
 // Terminal Component
 const Terminal: React.FC<{
   webContainer: WebContainer | undefined;
   onCommand: (command: string) => void;
-  files: FileItem[];
+  files?: FileItem[]; // Marked as optional
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
   prompt: string;
-}> = ({ webContainer, onCommand, files, setFiles, prompt }) => {
+  githubToken: string | null;
+  githubUser: string | null;
+  deployToGitHub: (repoName: string) => Promise<void>;
+}> = ({ webContainer, onCommand, files, setFiles, prompt, githubToken, githubUser, deployToGitHub }) => {
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -45,27 +52,46 @@ const Terminal: React.FC<{
     setError(null); // Clear previous errors
 
     try {
-      let process;
-      if (commandName === 'bolt.new') {
-        setOutput(prev => [...prev, 'Executing bolt.new...']);
-        process = await webContainer.spawn('npm', ['init', '-y']);
-      } else {
-        process = await webContainer.spawn(commandName, commandArgs);
-      }
-
-      process.output.pipeTo(new WritableStream({
-        write(chunk) {
-          setOutput(prev => [...prev, chunk]);
+      if (commandName === 'deploy') {
+        if (!githubToken || !githubUser) {
+          const errorMsg = 'Error: Not authenticated with GitHub. Please log in.';
+          setOutput(prev => [...prev, errorMsg]);
+          setError(errorMsg);
+          return;
         }
-      }));
-
-      const exitCode = await process.exit;
-      if (exitCode !== 0) {
-        const errorMsg = `Command "${cmd}" failed with exit code ${exitCode}`;
-        setOutput(prev => [...prev, errorMsg]);
-        setError(errorMsg);
+        const repoName = commandArgs[0] || `project-${Date.now()}`;
+        setOutput(prev => [...prev, `Deploying to GitHub repository: ${githubUser}/${repoName}`]);
+        await deployToGitHub(repoName);
+        setOutput(prev => [...prev, `Successfully deployed to https://github.com/${githubUser}/${repoName}`]);
       } else if (commandName === 'bolt.new') {
-        setOutput(prev => [...prev, 'Project initialized with bolt.new']);
+        setOutput(prev => [...prev, 'Executing bolt.new...']);
+        const process = await webContainer.spawn('npm', ['init', '-y']);
+        process.output.pipeTo(new WritableStream({
+          write(chunk) {
+            setOutput(prev => [...prev, chunk]);
+          }
+        }));
+        const exitCode = await process.exit;
+        if (exitCode !== 0) {
+          const errorMsg = `Command "${cmd}" failed with exit code ${exitCode}`;
+          setOutput(prev => [...prev, errorMsg]);
+          setError(errorMsg);
+        } else {
+          setOutput(prev => [...prev, 'Project initialized with bolt.new']);
+        }
+      } else {
+        const process = await webContainer.spawn(commandName, commandArgs);
+        process.output.pipeTo(new WritableStream({
+          write(chunk) {
+            setOutput(prev => [...prev, chunk]);
+          }
+        }));
+        const exitCode = await process.exit;
+        if (exitCode !== 0) {
+          const errorMsg = `Command "${cmd}" failed with exit code ${exitCode}`;
+          setOutput(prev => [...prev, errorMsg]);
+          setError(errorMsg);
+        }
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -110,7 +136,7 @@ const Terminal: React.FC<{
     }
   };
 
-  // Helper to create mount structure (same as in Builder)
+  // Helper to create mount structure
   const createMountStructure = (files: FileItem[]): Record<string, any> => {
     const mountStructure: Record<string, any> = {};
     const processFile = (file: FileItem, isRootFolder: boolean) => {
@@ -191,7 +217,7 @@ const Terminal: React.FC<{
             type="text"
             value={command}
             onChange={(e) => setCommand(e.target.value)}
-            placeholder="Enter command (e.g., npm install, bolt.new)"
+            placeholder="Enter command (e.g., npm install, deploy [repo-name])"
             className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
           />
           <button
@@ -226,12 +252,16 @@ const itemVariants = {
 
 export function Builder() {
   const location = useLocation();
-  const { prompt } = location.state as { prompt: string };
+  const navigate = useNavigate();
+  const { prompt } = (location.state || {}) as { prompt?: string };
   const [userPrompt, setPrompt] = useState("");
   const [llmMessages, setLlmMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
-  const webcontainer = useWebContainer();
+  const webContainer = useWebContainer();
+  const [githubToken, setGithubToken] = useState<string | null>(null);
+  const [githubUser, setGithubUser] = useState<string | null>(null);
+  const [codeVerifier, setCodeVerifier] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
@@ -239,9 +269,208 @@ export function Builder() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
 
+  // Handle missing prompt for /github-callback
+  useEffect(() => {
+    if (!prompt && location.pathname === '/github-callback') {
+      // OAuth callback: wait for token processing
+    } else if (!prompt) {
+      // No prompt and not a callback: redirect to home
+      navigate('/', { replace: true });
+    }
+  }, [prompt, location.pathname, navigate]);
+
+  // Generate PKCE code verifier and challenge
+  const generateCodeVerifier = () => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const verifier = Array.from(array)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    return verifier;
+  };
+
+  const generateCodeChallenge = (verifier: string) => {
+    const hashed = CryptoJS.SHA256(verifier);
+    const base64 = CryptoJS.enc.Base64.stringify(hashed);
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+
+  // Handle GitHub OAuth login with PKCE
+  const handleGithubLogin = () => {
+    const verifier = generateCodeVerifier();
+    const challenge = generateCodeChallenge(verifier);
+    setCodeVerifier(verifier);
+
+    const clientId = 'Ov23lihKpcUrawEIsn9B'; // Your Client ID
+    const redirectUri = `${window.location.origin}/github-callback`;
+    const scope = 'repo';
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&code_challenge=${challenge}&code_challenge_method=S256`;
+    window.location.href = githubAuthUrl;
+  };
+
+  // Handle GitHub OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (code && codeVerifier) {
+      // Exchange code for access token
+      const clientId = 'Ov23lihKpcUrawEIsn9B'; // Your Client ID
+      const redirectUri = `${window.location.origin}/github-callback`;
+      const tokenUrl = 'https://github.com/login/oauth/access_token';
+      const body = {
+        client_id: clientId,
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier
+      };
+
+      fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.access_token) {
+            setGithubToken(data.access_token);
+            // Get user info
+            const octokit = new Octokit({ auth: data.access_token });
+            octokit.request('GET /user').then(userResponse => {
+              setGithubUser(userResponse.data.login);
+              // Clean up URL and redirect
+              window.history.replaceState({}, document.title, window.location.pathname);
+              setCodeVerifier(null);
+              if (prompt) {
+                navigate('/builder', { state: { prompt }, replace: true });
+              } else {
+                navigate('/', { replace: true });
+              }
+            });
+          } else {
+            console.error('Error retrieving access token:', data);
+            navigate('/', { replace: true });
+          }
+        })
+        .catch(error => {
+          console.error('Error exchanging GitHub token:', error);
+          navigate('/', { replace: true });
+        });
+    }
+  }, [codeVerifier, navigate, prompt]);
+
+  // Handle GitHub logout
+  const handleGithubLogout = () => {
+    setGithubToken(null);
+    setGithubUser(null);
+    setCodeVerifier(null);
+  };
+
+  // Deploy to GitHub
+  const handleDeployToGitHub = async (repoName: string) => {
+    if (!githubToken || !githubUser) {
+      throw new Error('Not authenticated with GitHub');
+    }
+    const octokit = new Octokit({ auth: githubToken });
+
+    try {
+      // Check if repository exists, create if not
+      try {
+        await octokit.request('GET /repos/{owner}/{repo}', {
+          owner: githubUser,
+          repo: repoName
+        });
+      } catch (error) {
+        // Repository doesn't exist, create it
+        await octokit.request('POST /user/repos', {
+          name: repoName,
+          description: `Project created from prompt: ${prompt}`,
+          private: false,
+          auto_init: true
+        });
+      }
+
+      // Prepare files for commit
+      const fileContents: { path: string; content: string }[] = [];
+      const addFileToCommit = (file: FileItem, path: string) => {
+        if (file.type === 'file' && file.content) {
+          fileContents.push({ path, content: file.content });
+        } else if (file.type === 'folder' && file.children) {
+          file.children.forEach(child => {
+            addFileToCommit(child, `${path}/${child.name}`);
+          });
+        }
+      };
+      files.forEach(file => addFileToCommit(file, file.name));
+
+      // Get the latest commit SHA and tree SHA
+      const repoResponse = await octokit.request('GET /repos/{owner}/{repo}/branches/main', {
+        owner: githubUser,
+        repo: repoName
+      });
+      const latestCommitSha = repoResponse.data.commit.sha;
+      const treeSha = repoResponse.data.commit.commit.tree.sha;
+
+      // Create a new tree with the files
+      const newTree = await octokit.request('POST /repos/{owner}/{repo}/git/trees', {
+        owner: githubUser,
+        repo: repoName,
+        base_tree: treeSha,
+        tree: fileContents.map(file => ({
+          path: file.path,
+          mode: '100644',
+          type: 'blob',
+          content: file.content
+        }))
+      });
+
+      // Create a new commit
+      const newCommit = await octokit.request('POST /repos/{owner}/{repo}/git/commits', {
+        owner: githubUser,
+        repo: repoName,
+        message: 'Initial project files from Thunder',
+        tree: newTree.data.sha,
+        parents: [latestCommitSha]
+      });
+
+      // Update the main branch to point to the new commit
+      await octokit.request('PATCH /repos/{owner}/{repo}/git/refs/heads/main', {
+        owner: githubUser,
+        repo: repoName,
+        sha: newCommit.data.sha
+      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to deploy to GitHub';
+      throw new Error(errorMessage);
+    }
+  };
+
   // Handle terminal commands
   const handleTerminalCommand = (command: string) => {
     setLlmMessages(prev => [...prev, { role: "user", content: `Terminal command: ${command}` }]);
+  };
+
+  // Export all files as zip
+  const handleExportZip = async () => {
+    const zip = new JSZip();
+    const addFileToZip = (file: FileItem, path: string) => {
+      if (file.type === 'file' && file.content) {
+        zip.file(path, file.content);
+      } else if (file.type === 'folder' && file.children) {
+        file.children.forEach(child => {
+          addFileToZip(child, `${path}/${child.name}`);
+        });
+      }
+    };
+    files.forEach(file => addFileToZip(file, file.name));
+    try {
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, 'project-files.zip');
+    } catch (error) {
+      console.error('Error generating zip file:', error);
+    }
   };
 
   useEffect(() => {
@@ -302,7 +531,6 @@ export function Builder() {
   useEffect(() => {
     const createMountStructure = (files: FileItem[]): Record<string, any> => {
       const mountStructure: Record<string, any> = {};
-
       const processFile = (file: FileItem, isRootFolder: boolean) => {
         if (file.type === 'folder') {
           mountStructure[file.name] = {
@@ -329,53 +557,69 @@ export function Builder() {
         }
         return mountStructure[file.name];
       };
-
       files.forEach(file => processFile(file, true));
       return mountStructure;
     };
-
-    const mountStructure = createMountStructure(files);
-    webcontainer?.mount(mountStructure);
-  }, [files, webcontainer]);
+    if (webContainer && files.length > 0) {
+      const mountStructure = createMountStructure(files);
+      webContainer.mount(mountStructure);
+    }
+  }, [files, webContainer]);
 
   async function init() {
-    const response = await axios.post(`${BACKEND_URL}/template`, {
-      prompt: prompt.trim()
-    });
-    setTemplateSet(true);
+    if (!prompt) return; // Skip init if no prompt
+    try {
+      const response = await axios.post(`${BACKEND_URL}/template`, {
+        prompt: prompt.trim()
+      });
+      setTemplateSet(true);
 
-    const { prompts, uiPrompts } = response.data;
+      const { prompts, uiPrompts } = response.data;
 
-    setSteps(parseXml(uiPrompts[0]).map((x: Step) => ({
-      ...x,
-      status: "pending"
-    })));
+      setSteps(parseXml(uiPrompts[0]).map((x: Step) => ({
+        ...x,
+        status: "pending"
+      })));
 
-    setLoading(true);
-    const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
-      messages: [...prompts, prompt].map(content => ({
+      setLoading(true);
+      const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+        messages: [...prompts, prompt].map(content => ({
+          role: "user",
+          content
+        }))
+      });
+
+      setLoading(false);
+      setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
+        ...x,
+        status: "pending" as const
+      }))]);
+
+      setLlmMessages([...prompts, prompt].map(content => ({
         role: "user",
         content
-      }))
-    });
+      })));
 
-    setLoading(false);
-    setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
-      ...x,
-      status: "pending" as const
-    }))]);
-
-    setLlmMessages([...prompts, prompt].map(content => ({
-      role: "user",
-      content
-    })));
-
-    setLlmMessages(x => [...x, { role: "assistant", content: stepsResponse.data.response }]);
+      setLlmMessages(x => [...x, { role: "assistant", content: stepsResponse.data.response }]);
+    } catch (error) {
+      console.error('Error initializing project:', error);
+    }
   }
 
   useEffect(() => {
-    init();
-  }, []);
+    if (prompt) {
+      init();
+    }
+  }, [prompt]);
+
+  // Render fallback if no prompt (except during callback)
+  if (!prompt && location.pathname !== '/github-callback') {
+    return (
+      <div className="min-h-screen bg-[#0F172A] flex items-center justify-center text-white">
+        <p>No project prompt provided. Please start a new project from the home page.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col relative overflow-hidden font-sans">
@@ -388,21 +632,74 @@ export function Builder() {
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100 }}
       >
-        <motion.h1
-          className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          Thunder
-        </motion.h1>
-        <motion.p
-          className="text-sm text-blue-200 mt-1"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          Crafting: <span className="text-blue-400">{prompt}</span>
-        </motion.p>
+        <div className="flex justify-between items-center">
+          <div>
+            <motion.h1
+              className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              Thunder
+            </motion.h1>
+            <motion.p
+              className="text-sm text-blue-200 mt-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              Crafting: <span className="text-blue-400">{prompt}</span>
+            </motion.p>
+            {githubUser && (
+              <motion.p
+                className="text-sm text-blue-200"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                GitHub: <span className="text-blue-400">{githubUser}</span>
+              </motion.p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {githubToken ? (
+              <motion.button
+                onClick={handleGithubLogout}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-red-500/40 hover:shadow-red-600/50 transition-all animate-pulse-glow"
+              >
+                GitHub Logout
+              </motion.button>
+            ) : (
+              <motion.button
+                onClick={handleGithubLogin}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow flex items-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.083-.729.083-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"
+                  />
+                </svg>
+                GitHub Login
+              </motion.button>
+            )}
+            <motion.button
+              onClick={handleExportZip}
+              whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
+            >
+              Export as ZIP
+            </motion.button>
+          </div>
+        </div>
       </motion.header>
 
       <div className="flex-1 overflow-hidden relative z-10">
@@ -456,23 +753,25 @@ export function Builder() {
                             role: "user" as const,
                             content: userPrompt
                           };
-
                           setLoading(true);
-                          const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
-                            messages: [...llmMessages, newMessage]
-                          });
-                          setLoading(false);
-
-                          setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, newMessage]);
-                          setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, {
-                            role: "assistant",
-                            content: stepsResponse.data.response
-                          }]);
-
-                          setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
-                            ...x,
-                            status: "pending" as const
-                          }))]);
+                          try {
+                            const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+                              messages: [...llmMessages, newMessage]
+                            });
+                            setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, newMessage]);
+                            setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, {
+                              role: "assistant",
+                              content: stepsResponse.data.response
+                            }]);
+                            setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
+                              ...x,
+                              status: "pending" as const
+                            }))]);
+                          } catch (error) {
+                            console.error('Error enhancing request:', error);
+                          } finally {
+                            setLoading(false);
+                          }
                         }}
                         whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
                         whileTap={{ scale: 0.95 }}
@@ -515,14 +814,17 @@ export function Builder() {
                 ) : (
                   <>
                     <div className="flex-1">
-                      <PreviewFrame webContainer={webcontainer} files={files} />
+                      <PreviewFrame webContainer={webContainer} files={files} />
                     </div>
                     <Terminal
-                      webContainer={webcontainer}
+                      webContainer={webContainer}
                       onCommand={handleTerminalCommand}
                       files={files}
                       setFiles={setFiles}
-                      prompt={prompt}
+                      prompt={prompt || ''}
+                      githubToken={githubToken}
+                      githubUser={githubUser}
+                      deployToGitHub={handleDeployToGitHub}
                     />
                   </>
                 )}
