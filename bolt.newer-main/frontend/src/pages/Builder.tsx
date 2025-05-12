@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -18,12 +19,13 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { Octokit } from '@octokit/core';
 import CryptoJS from 'crypto-js';
+import { useMediaQuery } from 'react-responsive';
 
 // Terminal Component
 const Terminal: React.FC<{
   webContainer: WebContainer | undefined;
   onCommand: (command: string) => void;
-  files?: FileItem[]; // Marked as optional
+  files?: FileItem[];
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
   prompt: string;
   githubToken: string | null;
@@ -35,7 +37,6 @@ const Terminal: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Handle command execution
   const executeCommand = async (cmd: string) => {
     if (!webContainer) {
       const errorMsg = 'Error: WebContainer not initialized';
@@ -49,7 +50,7 @@ const Terminal: React.FC<{
     const commandArgs = args.slice(1);
 
     setOutput(prev => [...prev, `> ${cmd}`]);
-    setError(null); // Clear previous errors
+    setError(null);
 
     try {
       if (commandName === 'deploy') {
@@ -101,7 +102,6 @@ const Terminal: React.FC<{
     }
   };
 
-  // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (command.trim()) {
@@ -111,7 +111,6 @@ const Terminal: React.FC<{
     }
   };
 
-  // Fix error by calling /template endpoint
   const handleFixError = async () => {
     if (!error) return;
     try {
@@ -123,8 +122,7 @@ const Terminal: React.FC<{
       const { files: newFiles } = response.data;
       setFiles(newFiles);
       setOutput(prev => [...prev, 'Project files updated to fix error']);
-      setError(null); // Clear error
-      // Remount files to WebContainer
+      setError(null);
       if (webContainer) {
         const mountStructure = createMountStructure(newFiles);
         await webContainer.mount(mountStructure);
@@ -136,7 +134,6 @@ const Terminal: React.FC<{
     }
   };
 
-  // Helper to create mount structure
   const createMountStructure = (files: FileItem[]): Record<string, any> => {
     const mountStructure: Record<string, any> = {};
     const processFile = (file: FileItem, isRootFolder: boolean) => {
@@ -169,18 +166,15 @@ const Terminal: React.FC<{
     return mountStructure;
   };
 
-  // Scroll to bottom of terminal output
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [output]);
 
-  // Capture installation output and server URL
   useEffect(() => {
     if (!webContainer) return;
 
-    // Capture npm install output
     webContainer.spawn('npm', ['install']).then(installProcess => {
       installProcess.output.pipeTo(new WritableStream({
         write(chunk) {
@@ -196,15 +190,14 @@ const Terminal: React.FC<{
       });
     });
 
-    // Capture server URL
     webContainer.on('server-ready', (_port: number, url: string) => {
       setOutput(prev => [...prev, `Server running at: ${url}`]);
     });
   }, [webContainer]);
 
   return (
-    <div className="bg-gray-900/80 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[20vh] min-h-[100px] flex flex-col shadow-lg shadow-blue-500/30">
-      <div className="flex-1 overflow-y-auto mb-2 font-mono text-sm text-blue-100" ref={terminalRef}>
+    <div className="bg-gray-900/80 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[15vh] sm:h-[20vh] min-h-[80px] flex flex-col shadow-lg shadow-blue-500/30">
+      <div className="flex-1 overflow-y-auto mb-2 font-mono text-xs sm:text-sm text-blue-100" ref={terminalRef}>
         {output.map((line, index) => (
           <div key={index} className={`whitespace-pre-wrap ${line.includes('Error') ? 'text-red-400' : ''}`}>
             {line}
@@ -218,11 +211,11 @@ const Terminal: React.FC<{
             value={command}
             onChange={(e) => setCommand(e.target.value)}
             placeholder="Enter command (e.g., npm install, deploy [repo-name])"
-            className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+            className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-xs sm:text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
           />
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-lg text-sm font-medium"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-r-lg text-xs sm:text-sm font-medium"
           >
             Run
           </button>
@@ -230,9 +223,9 @@ const Terminal: React.FC<{
         {error && (
           <button
             onClick={handleFixError}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium"
           >
-            Fix Error
+            Fix
           </button>
         )}
       </div>
@@ -262,24 +255,22 @@ export function Builder() {
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [githubUser, setGithubUser] = useState<string | null>(null);
   const [codeVerifier, setCodeVerifier] = useState<string | null>(null);
-
   const [currentStep, setCurrentStep] = useState(1);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [activeSection, setActiveSection] = useState<'steps' | 'files' | 'editor' | 'terminal'>('steps');
+  const isMobile = useMediaQuery({ maxWidth: 640 });
 
-  // Handle missing prompt for /github-callback
   useEffect(() => {
     if (!prompt && location.pathname === '/github-callback') {
       // OAuth callback: wait for token processing
     } else if (!prompt) {
-      // No prompt and not a callback: redirect to home
       navigate('/', { replace: true });
     }
   }, [prompt, location.pathname, navigate]);
 
-  // Generate PKCE code verifier and challenge
   const generateCodeVerifier = () => {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
@@ -295,26 +286,23 @@ export function Builder() {
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   };
 
-  // Handle GitHub OAuth login with PKCE
   const handleGithubLogin = () => {
     const verifier = generateCodeVerifier();
     const challenge = generateCodeChallenge(verifier);
     setCodeVerifier(verifier);
 
-    const clientId = 'Ov23lihKpcUrawEIsn9B'; // Your Client ID
+    const clientId = 'Ov23lihKpcUrawEIsn9B';
     const redirectUri = `${window.location.origin}/github-callback`;
     const scope = 'repo';
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&code_challenge=${challenge}&code_challenge_method=S256`;
     window.location.href = githubAuthUrl;
   };
 
-  // Handle GitHub OAuth callback
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     if (code && codeVerifier) {
-      // Exchange code for access token
-      const clientId = 'Ov23lihKpcUrawEIsn9B'; // Your Client ID
+      const clientId = 'Ov23lihKpcUrawEIsn9B';
       const redirectUri = `${window.location.origin}/github-callback`;
       const tokenUrl = 'https://github.com/login/oauth/access_token';
       const body = {
@@ -336,11 +324,9 @@ export function Builder() {
         .then(data => {
           if (data.access_token) {
             setGithubToken(data.access_token);
-            // Get user info
             const octokit = new Octokit({ auth: data.access_token });
             octokit.request('GET /user').then(userResponse => {
               setGithubUser(userResponse.data.login);
-              // Clean up URL and redirect
               window.history.replaceState({}, document.title, window.location.pathname);
               setCodeVerifier(null);
               if (prompt) {
@@ -361,14 +347,12 @@ export function Builder() {
     }
   }, [codeVerifier, navigate, prompt]);
 
-  // Handle GitHub logout
   const handleGithubLogout = () => {
     setGithubToken(null);
     setGithubUser(null);
     setCodeVerifier(null);
   };
 
-  // Deploy to GitHub
   const handleDeployToGitHub = async (repoName: string) => {
     if (!githubToken || !githubUser) {
       throw new Error('Not authenticated with GitHub');
@@ -376,14 +360,12 @@ export function Builder() {
     const octokit = new Octokit({ auth: githubToken });
 
     try {
-      // Check if repository exists, create if not
       try {
         await octokit.request('GET /repos/{owner}/{repo}', {
           owner: githubUser,
           repo: repoName
         });
       } catch (error) {
-        // Repository doesn't exist, create it
         await octokit.request('POST /user/repos', {
           name: repoName,
           description: `Project created from prompt: ${prompt}`,
@@ -392,7 +374,6 @@ export function Builder() {
         });
       }
 
-      // Prepare files for commit
       const fileContents: { path: string; content: string }[] = [];
       const addFileToCommit = (file: FileItem, path: string) => {
         if (file.type === 'file' && file.content) {
@@ -405,7 +386,6 @@ export function Builder() {
       };
       files.forEach(file => addFileToCommit(file, file.name));
 
-      // Get the latest commit SHA and tree SHA
       const repoResponse = await octokit.request('GET /repos/{owner}/{repo}/branches/main', {
         owner: githubUser,
         repo: repoName
@@ -413,7 +393,6 @@ export function Builder() {
       const latestCommitSha = repoResponse.data.commit.sha;
       const treeSha = repoResponse.data.commit.commit.tree.sha;
 
-      // Create a new tree with the files
       const newTree = await octokit.request('POST /repos/{owner}/{repo}/git/trees', {
         owner: githubUser,
         repo: repoName,
@@ -426,7 +405,6 @@ export function Builder() {
         }))
       });
 
-      // Create a new commit
       const newCommit = await octokit.request('POST /repos/{owner}/{repo}/git/commits', {
         owner: githubUser,
         repo: repoName,
@@ -435,7 +413,6 @@ export function Builder() {
         parents: [latestCommitSha]
       });
 
-      // Update the main branch to point to the new commit
       await octokit.request('PATCH /repos/{owner}/{repo}/git/refs/heads/main', {
         owner: githubUser,
         repo: repoName,
@@ -447,12 +424,10 @@ export function Builder() {
     }
   };
 
-  // Handle terminal commands
   const handleTerminalCommand = (command: string) => {
     setLlmMessages(prev => [...prev, { role: "user", content: `Terminal command: ${command}` }]);
   };
 
-  // Export all files as zip
   const handleExportZip = async () => {
     const zip = new JSZip();
     const addFileToZip = (file: FileItem, path: string) => {
@@ -567,7 +542,7 @@ export function Builder() {
   }, [files, webContainer]);
 
   async function init() {
-    if (!prompt) return; // Skip init if no prompt
+    if (!prompt) return;
     try {
       const response = await axios.post(`${BACKEND_URL}/template`, {
         prompt: prompt.trim()
@@ -612,7 +587,6 @@ export function Builder() {
     }
   }, [prompt]);
 
-  // Render fallback if no prompt (except during callback)
   if (!prompt && location.pathname !== '/github-callback') {
     return (
       <div className="min-h-screen bg-[#0F172A] flex items-center justify-center text-white">
@@ -623,26 +597,26 @@ export function Builder() {
 
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col relative overflow-hidden font-sans">
-      {/* Lightning Background */}
-      <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />
+      {/* Lightning Background (Disabled on Mobile) */}
+      {!isMobile && <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />}
 
       <motion.header
-        className="bg-gray-900/80 backdrop-blur-2xl border-b border-blue-500/40 px-6 py-4 relative z-10"
+        className="bg-gray-900/80 backdrop-blur-2xl border-b border-blue-500/40 px-4 sm:px-6 py-4 relative z-10"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100 }}
       >
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
+          <div className="text-center sm:text-left">
             <motion.h1
-              className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
+              className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
               Thunder
             </motion.h1>
             <motion.p
-              className="text-sm text-blue-200 mt-1"
+              className="text-xs sm:text-sm text-blue-200 mt-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -651,7 +625,7 @@ export function Builder() {
             </motion.p>
             {githubUser && (
               <motion.p
-                className="text-sm text-blue-200"
+                className="text-xs sm:text-sm text-blue-200"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
@@ -660,13 +634,13 @@ export function Builder() {
               </motion.p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {githubToken ? (
               <motion.button
                 onClick={handleGithubLogout}
                 whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-red-500/40 hover:shadow-red-600/50 transition-all animate-pulse-glow"
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg shadow-red-500/40 hover:shadow-red-600/50 transition-all animate-pulse-glow"
               >
                 GitHub Logout
               </motion.button>
@@ -675,10 +649,10 @@ export function Builder() {
                 onClick={handleGithubLogin}
                 whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow flex items-center gap-2"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow flex items-center gap-2"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 sm:w-5 h-4 sm:h-5"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                   xmlns="http://www.w3.org/2000/svg"
@@ -694,7 +668,7 @@ export function Builder() {
               onClick={handleExportZip}
               whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
             >
               Export as ZIP
             </motion.button>
@@ -703,135 +677,304 @@ export function Builder() {
       </motion.header>
 
       <div className="flex-1 overflow-hidden relative z-10">
-        <motion.div
-          className="h-full grid grid-cols-4 gap-6 p-6"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+        {isMobile ? (
           <motion.div
-            className="col-span-1 space-y-6"
-            variants={itemVariants}
+            className="h-full flex flex-col p-4 gap-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
           >
-            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30">
-              <div className="flex-1 overflow-y-auto pr-2">
-                <StepsList
-                  steps={steps}
-                  currentStep={currentStep}
-                  onStepClick={setCurrentStep}
-                />
-              </div>
+            {/* Mobile Navigation Tabs */}
+            <div className="flex justify-around bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 p-2 shadow-lg shadow-blue-500/30">
+              <motion.button
+                onClick={() => setActiveSection('steps')}
+                className={`px-3 py-2 rounded-lg text-xs font-medium ${activeSection === 'steps' ? 'bg-blue-500/40 text-blue-100' : 'text-blue-200 hover:text-blue-400'}`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Steps
+              </motion.button>
+              <motion.button
+                onClick={() => setActiveSection('files')}
+                className={`px-3 py-2 rounded-lg text-xs font-medium ${activeSection === 'files' ? 'bg-blue-500/40 text-blue-100' : 'text-blue-200 hover:text-blue-400'}`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Files
+              </motion.button>
+              <motion.button
+                onClick={() => setActiveSection('editor')}
+                className={`px-3 py-2 rounded-lg text-xs font-medium ${activeSection === 'editor' ? 'bg-blue-500/40 text-blue-100' : 'text-blue-200 hover:text-blue-400'}`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Editor
+              </motion.button>
+              <motion.button
+                onClick={() => setActiveSection('terminal')}
+                className={`px-3 py-2 rounded-lg text-xs font-medium ${activeSection === 'terminal' ? 'bg-blue-500/40 text-blue-100' : 'text-blue-200 hover:text-blue-400'}`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Terminal
+              </motion.button>
+            </div>
 
-              <div className="pt-4 border-t border-blue-500/40">
-                <div className="flex flex-col gap-3">
-                  {(loading || !templateSet) && (
-                    <motion.div
-                      className="flex items-center justify-center p-4"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <Loader />
-                    </motion.div>
-                  )}
-
-                  {!(loading || !templateSet) && (
-                    <motion.div
-                      className="flex flex-col gap-2"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      <textarea
-                        value={userPrompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Add more instructions..."
-                        className="w-full bg-gray-800/50 border border-blue-500/40 rounded-lg p-3 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70 transition-all resize-none"
-                        rows={3}
-                      />
-                      <motion.button
-                        onClick={async () => {
-                          const newMessage = {
-                            role: "user" as const,
-                            content: userPrompt
-                          };
-                          setLoading(true);
-                          try {
-                            const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
-                              messages: [...llmMessages, newMessage]
-                            });
-                            setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, newMessage]);
-                            setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, {
-                              role: "assistant",
-                              content: stepsResponse.data.response
-                            }]);
-                            setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
-                              ...x,
-                              status: "pending" as const
-                            }))]);
-                          } catch (error) {
-                            console.error('Error enhancing request:', error);
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                        whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
-                        whileTap={{ scale: 0.95 }}
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
-                      >
-                        Enhance Request
-                      </motion.button>
-                    </motion.div>
-                  )}
+            {/* Mobile Sections */}
+            {activeSection === 'steps' && (
+              <motion.div
+                className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-12rem)] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30"
+                variants={itemVariants}
+              >
+                <div className="flex-1 overflow-y-auto pr-2">
+                  <StepsList
+                    steps={steps}
+                    currentStep={currentStep}
+                    onStepClick={setCurrentStep}
+                  />
                 </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="col-span-1"
-            variants={itemVariants}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] shadow-lg shadow-blue-500/30">
-              <FileExplorer
-                files={files}
-                onFileSelect={setSelectedFile}
-              />
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="col-span-2"
-            variants={itemVariants}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 h-[calc(100vh-8rem)] flex flex-col shadow-lg shadow-blue-500/30">
-              <TabView activeTab={activeTab} onTabChange={setActiveTab} />
-              <div className="flex-1 overflow-hidden flex flex-col">
-                {activeTab === 'code' ? (
-                  <div className="flex-1">
-                    <CodeEditor file={selectedFile} />
+                <div className="pt-4 border-t border-blue-500/40">
+                  <div className="flex flex-col gap-3">
+                    {(loading || !templateSet) && (
+                      <motion.div
+                        className="flex items-center justify-center p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
+                        <Loader />
+                      </motion.div>
+                    )}
+                    {!(loading || !templateSet) && (
+                      <motion.div
+                        className="flex flex-col gap-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
+                        <textarea
+                          value={userPrompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          placeholder="Add more instructions..."
+                          className="w-full bg-gray-800/50 border border-blue-500/40 rounded-lg p-3 text-xs text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70 transition-all resize-none"
+                          rows={3}
+                        />
+                        <motion.button
+                          onClick={async () => {
+                            const newMessage = {
+                              role: "user" as const,
+                              content: userPrompt
+                            };
+                            setLoading(true);
+                            try {
+                              const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+                                messages: [...llmMessages, newMessage]
+                              });
+                              setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, newMessage]);
+                              setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, {
+                                role: "assistant",
+                                content: stepsResponse.data.response
+                              }]);
+                              setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
+                                ...x,
+                                status: "pending" as const
+                              }))]);
+                            } catch (error) {
+                              console.error('Error enhancing request:', error);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
+                          whileTap={{ scale: 0.95 }}
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
+                        >
+                          Enhance Request
+                        </motion.button>
+                      </motion.div>
+                    )}
                   </div>
-                ) : (
-                  <>
+                </div>
+              </motion.div>
+            )}
+
+            {activeSection === 'files' && (
+              <motion.div
+                className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-12rem)] shadow-lg shadow-blue-500/30"
+                variants={itemVariants}
+              >
+                <FileExplorer
+                  files={files}
+                  onFileSelect={setSelectedFile}
+                />
+              </motion.div>
+            )}
+
+            {activeSection === 'editor' && (
+              <motion.div
+                className="bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 h-[calc(100vh-12rem)] flex flex-col shadow-lg shadow-blue-500/30"
+                variants={itemVariants}
+              >
+                <TabView activeTab={activeTab} onTabChange={setActiveTab} />
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {activeTab === 'code' ? (
+                    <div className="flex-1">
+                      <CodeEditor file={selectedFile} />
+                    </div>
+                  ) : (
                     <div className="flex-1">
                       <PreviewFrame webContainer={webContainer} files={files} />
                     </div>
-                    <Terminal
-                      webContainer={webContainer}
-                      onCommand={handleTerminalCommand}
-                      files={files}
-                      setFiles={setFiles}
-                      prompt={prompt || ''}
-                      githubToken={githubToken}
-                      githubUser={githubUser}
-                      deployToGitHub={handleDeployToGitHub}
-                    />
-                  </>
-                )}
-              </div>
-            </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeSection === 'terminal' && (
+              <motion.div
+                className="bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 h-[calc(100vh-12rem)] flex flex-col shadow-lg shadow-blue-500/30"
+                variants={itemVariants}
+              >
+                <Terminal
+                  webContainer={webContainer}
+                  onCommand={handleTerminalCommand}
+                  files={files}
+                  setFiles={setFiles}
+                  prompt={prompt || ''}
+                  githubToken={githubToken}
+                  githubUser={githubUser}
+                  deployToGitHub={handleDeployToGitHub}
+                />
+              </motion.div>
+            )}
           </motion.div>
-        </motion.div>
+        ) : (
+          <motion.div
+            className="h-full grid grid-cols-4 gap-6 p-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div
+              className="col-span-1 space-y-6"
+              variants={itemVariants}
+            >
+              <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30">
+                <div className="flex-1 overflow-y-auto pr-2">
+                  <StepsList
+                    steps={steps}
+                    currentStep={currentStep}
+                    onStepClick={setCurrentStep}
+                  />
+                </div>
+                <div className="pt-4 border-t border-blue-500/40">
+                  <div className="flex flex-col gap-3">
+                    {(loading || !templateSet) && (
+                      <motion.div
+                        className="flex items-center justify-center p-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
+                        <Loader />
+                      </motion.div>
+                    )}
+                    {!(loading || !templateSet) && (
+                      <motion.div
+                        className="flex flex-col gap-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
+                        <textarea
+                          value={userPrompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          placeholder="Add more instructions..."
+                          className="w-full bg-gray-800/50 border border-blue-500/40 rounded-lg p-3 text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70 transition-all resize-none"
+                          rows={3}
+                        />
+                        <motion.button
+                          onClick={async () => {
+                            const newMessage = {
+                              role: "user" as const,
+                              content: userPrompt
+                            };
+                            setLoading(true);
+                            try {
+                              const stepsResponse = await axios.post(`${BACKEND_URL}/chat`, {
+                                messages: [...llmMessages, newMessage]
+                              });
+                              setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, newMessage]);
+                              setLlmMessages((x: { role: "user" | "assistant"; content: string }[]) => [...x, {
+                                role: "assistant",
+                                content: stepsResponse.data.response
+                              }]);
+                              setSteps(s => [...s, ...parseXml(stepsResponse.data.response).map(x => ({
+                                ...x,
+                                status: "pending" as const
+                              }))]);
+                            } catch (error) {
+                              console.error('Error enhancing request:', error);
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
+                          whileTap={{ scale: 0.95 }}
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
+                        >
+                          Enhance Request
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="col-span-1"
+              variants={itemVariants}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] shadow-lg shadow-blue-500/30">
+                <FileExplorer
+                  files={files}
+                  onFileSelect={setSelectedFile}
+                />
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="col-span-2"
+              variants={itemVariants}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 h-[calc(100vh-8rem)] flex flex-col shadow-lg shadow-blue-500/30">
+                <TabView activeTab={activeTab} onTabChange={setActiveTab} />
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {activeTab === 'code' ? (
+                    <div className="flex-1">
+                      <CodeEditor file={selectedFile} />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1">
+                        <PreviewFrame webContainer={webContainer} files={files} />
+                      </div>
+                      <Terminal
+                        webContainer={webContainer}
+                        onCommand={handleTerminalCommand}
+                        files={files}
+                        setFiles={setFiles}
+                        prompt={prompt || ''}
+                        githubToken={githubToken}
+                        githubUser={githubUser}
+                        deployToGitHub={handleDeployToGitHub}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </div>
 
       <style>
