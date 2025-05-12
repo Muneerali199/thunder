@@ -65,7 +65,7 @@ const Terminal: React.FC<{
         setOutput(prev => [...prev, `Successfully deployed to https://github.com/${githubUser}/${repoName}`]);
       } else if (commandName === 'bolt.new') {
         setOutput(prev => [...prev, 'Executing bolt.new...']);
-        const process = await webContainer.spawn('npm', ['init', '-y']);
+        const process = await webContainer.spawn('pnpm', ['init']);
         process.output.pipeTo(new WritableStream({
           write(chunk) {
             setOutput(prev => [...prev, chunk]);
@@ -133,6 +133,78 @@ const Terminal: React.FC<{
     }
   };
 
+  const fixDependencyError = async () => {
+    if (!webContainer) {
+      setOutput(prev => [...prev, 'Error: WebContainer not initialized']);
+      return;
+    }
+
+    setOutput(prev => [...prev, 'Attempting to fix dependency installation...']);
+
+    try {
+      // Step 1: Clear pnpm cache
+      setOutput(prev => [...prev, 'Clearing pnpm cache...']);
+      await webContainer.spawn('pnpm', ['cache', 'clear']);
+      setOutput(prev => [...prev, 'pnpm cache cleared']);
+
+      // Step 2: Ensure package.json exists
+      const packageJsonExists = files?.some(file => file.name === 'package.json');
+      if (!packageJsonExists) {
+        setOutput(prev => [...prev, 'No package.json found. Creating minimal package.json...']);
+        const minimalPackageJson = {
+          name: 'project',
+          version: '1.0.0',
+          private: true,
+          scripts: {
+            dev: 'vite',
+            build: 'vite build',
+            preview: 'vite preview'
+          },
+          dependencies: {}
+        };
+        await webContainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
+        setFiles(prev => [
+          ...prev,
+          {
+            name: 'package.json',
+            type: 'file',
+            path: '/package.json',
+            content: JSON.stringify(minimalPackageJson, null, 2)
+          }
+        ]);
+        setOutput(prev => [...prev, 'Minimal package.json created']);
+      }
+
+      // Step 3: Retry pnpm install with fallback registry
+      setOutput(prev => [...prev, 'Retrying pnpm install...']);
+      const installProcess = await webContainer.spawn('pnpm', [
+        'install',
+        '--registry=https://registry.npmjs.org',
+        '--prefer-offline'
+      ]);
+      let installOutput = '';
+      installProcess.output.pipeTo(new WritableStream({
+        write(chunk) {
+          installOutput += chunk;
+          setOutput(prev => [...prev, chunk]);
+        }
+      }));
+      const exitCode = await installProcess.exit;
+      if (exitCode !== 0) {
+        const errorMsg = `pnpm install failed with exit code ${exitCode}: ${installOutput}`;
+        setOutput(prev => [...prev, errorMsg]);
+        setError(errorMsg);
+        return;
+      }
+      setOutput(prev => [...prev, 'Dependencies installed successfully']);
+      setError(null);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fix dependencies';
+      setOutput(prev => [...prev, `Error fixing dependencies: ${errorMessage}`]);
+      setError(`Error fixing dependencies: ${errorMessage}`);
+    }
+  };
+
   const createMountStructure = (files: FileItem[]): Record<string, any> => {
     const mountStructure: Record<string, any> = {};
     const processFile = (file: FileItem, isRootFolder: boolean) => {
@@ -174,20 +246,39 @@ const Terminal: React.FC<{
   useEffect(() => {
     if (!webContainer) return;
 
-    webContainer.spawn('npm', ['install']).then(installProcess => {
-      installProcess.output.pipeTo(new WritableStream({
-        write(chunk) {
-          setOutput(prev => [...prev, chunk]);
-        }
-      }));
-      installProcess.exit.then(exitCode => {
+    const installDependencies = async () => {
+      try {
+        setOutput(prev => [...prev, 'Installing dependencies with pnpm...']);
+        const installProcess = await webContainer.spawn('pnpm', [
+          'install',
+          '--registry=https://registry.npmjs.org',
+          '--prefer-offline'
+        ]);
+        let installOutput = '';
+        installProcess.output.pipeTo(new WritableStream({
+          write(chunk) {
+            installOutput += chunk;
+            setOutput(prev => [...prev, chunk]);
+          }
+        }));
+        const exitCode = await installProcess.exit;
         if (exitCode !== 0) {
-          const errorMsg = `npm install failed with exit code ${exitCode}`;
+          const errorMsg = `pnpm install failed with exit code ${exitCode}: ${installOutput}`;
           setOutput(prev => [...prev, errorMsg]);
           setError(errorMsg);
+          await fixDependencyError(); // Automatically attempt to fix
+        } else {
+          setOutput(prev => [...prev, 'Dependencies installed successfully']);
         }
-      });
-    });
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setOutput(prev => [...prev, `Error installing dependencies: ${errorMessage}`]);
+        setError(`Error installing dependencies: ${errorMessage}`);
+        fixDependencyError(); // Automatically attempt to fix
+      }
+    };
+
+    installDependencies();
 
     webContainer.on('server-ready', (_port: number, url: string) => {
       setOutput(prev => [...prev, `Server running at: ${url}`]);
@@ -209,7 +300,7 @@ const Terminal: React.FC<{
             type="text"
             value={command}
             onChange={(e) => setCommand(e.target.value)}
-            placeholder="Enter command (e.g., npm install, deploy [repo-name])"
+            placeholder="Enter command (e.g., pnpm install, deploy [repo-name])"
             className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-xs sm:text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
           />
           <button
@@ -261,6 +352,34 @@ export function Builder() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [activeSection, setActiveSection] = useState<'steps' | 'files' | 'editor' | 'terminal'>('steps');
   const isMobile = useMediaQuery({ maxWidth: 640 });
+
+  // Ensure package.json exists when mounting files
+  useEffect(() => {
+    const packageJsonExists = files.some(file => file.name === 'package.json');
+    if (!packageJsonExists && webContainer) {
+      const minimalPackageJson = {
+        name: 'project',
+        version: '1.0.0',
+        private: true,
+        scripts: {
+          dev: 'vite',
+          build: 'vite build',
+          preview: 'vite preview'
+        },
+        dependencies: {}
+      };
+      webContainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
+      setFiles(prev => [
+        ...prev,
+        {
+          name: 'package.json',
+          type: 'file',
+          path: '/package.json',
+          content: JSON.stringify(minimalPackageJson, null, 2)
+        }
+      ]);
+    }
+  }, [files, webContainer]);
 
   useEffect(() => {
     if (!prompt && location.pathname === '/github-callback') {
@@ -820,6 +939,7 @@ export function Builder() {
                     </div>
                   ) : (
                     <div className="flex-1">
+                      {/* Note: Ensure PreviewFrameProps in previewframe.tsx includes files: FileItem[] */}
                       <PreviewFrame webContainer={webContainer} files={files} />
                     </div>
                   )}
@@ -955,6 +1075,7 @@ export function Builder() {
                   ) : (
                     <>
                       <div className="flex-1">
+                        {/* Note: Ensure PreviewFrameProps in previewframe.tsx includes files: FileItem[] */}
                         <PreviewFrame webContainer={webContainer} files={files} />
                       </div>
                       <Terminal
