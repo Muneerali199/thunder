@@ -10,6 +10,7 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [installOutput, setInstallOutput] = useState<string[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const toggleFullScreen = () => {
@@ -57,22 +58,33 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
 
     const setupServer = async () => {
       try {
-        let installProcess = await webContainer.spawn('npm', ['install']);
-        let installExitCode = await installProcess.exit;
-
-        if (installExitCode !== 0) {
-          console.warn('Regular install failed, attempting forced install...');
-          installProcess = await webContainer.spawn('npm', ['install', '--force']);
-          installExitCode = await installProcess.exit;
+        // Check if node_modules exists to skip installation
+        const nodeModulesExists = await webContainer.fs.readdir('node_modules').catch(() => null);
+        if (!nodeModulesExists) {
+          setInstallOutput(prev => [...prev, 'Installing dependencies with pnpm...']);
+          const installProcess = await webContainer.spawn('pnpm', ['install', '--registry=https://registry.npmjs.org']);
           
+          // Stream installation output
+          installProcess.output.pipeTo(
+            new WritableStream({
+              write(chunk) {
+                setInstallOutput(prev => [...prev, chunk]);
+              },
+            })
+          );
+
+          const installExitCode = await installProcess.exit;
           if (installExitCode !== 0) {
             throw new Error(`Dependency installation failed (exit code ${installExitCode})`);
           }
+          setInstallOutput(prev => [...prev, 'Dependencies installed successfully!']);
+        } else {
+          setInstallOutput(prev => [...prev, 'Dependencies already installed, skipping...']);
         }
 
-        const devProcess = await webContainer.spawn('npm', ['run', 'dev']);
+        // Start the dev server
+        const devProcess = await webContainer.spawn('pnpm', ['run', 'dev']);
         const devExitCode = await devProcess.exit;
-        
         if (devExitCode !== 0) {
           throw new Error(`Server failed to start (exit code ${devExitCode})`);
         }
@@ -84,9 +96,6 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
     setupServer();
 
     return () => {
-      // Remove event listeners if WebContainer API supports it
-      // Note: The WebContainer type definition might not include 'off' method
-      // This is a safe cleanup pattern regardless of API support
       (webContainer as any).off?.('server-ready', handleServerReady);
       (webContainer as any).off?.('error', handleError);
     };
@@ -103,7 +112,12 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
 
       {!url && !error && (
         <div className="text-center">
-          <p className="mb-2">Installing dependencies...</p>
+          <p className="mb-2">Setting up environment...</p>
+          <div className="max-h-40 overflow-y-auto text-sm text-gray-500">
+            {installOutput.map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
+          </div>
           <div className="inline-block animate-spin">
             <svg
               stroke="currentColor"

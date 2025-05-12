@@ -1,9 +1,8 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, File, Settings, LayoutDashboard, Plus, History, DollarSign, Eye } from 'lucide-react';
+import { Home as HomeIcon, File, Settings, Plus, History, DollarSign, Eye } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Lightning } from '../components/lightning';
 
@@ -199,15 +198,6 @@ export function Home() {
               >
                 <HomeIcon className="h-5 w-5 flex-shrink-0" />
                 {isSidebarExpanded && <span className="text-sm">Home</span>}
-              </motion.button>
-
-              <motion.button
-                onClick={() => navigate('/dashboard')}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Dashboard</span>}
               </motion.button>
 
               <motion.button
@@ -489,7 +479,9 @@ export function Home() {
                     className="absolute bottom-4 sm:bottom-8 right-4 sm:right-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg px-6 sm:px-8 py-2 sm:py-3 text-sm font-semibold shadow-lg shadow-purple-600/60 hover:shadow-purple-600/80 transition-all duration-500 animate-pulse-glow"
                   >
                     Generate →
-                  </motion.button>
+                  </motion
+
+.button>
                 )}
               </div>
             </div>
@@ -501,7 +493,7 @@ export function Home() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.3 }}
-            className="bg-gray-900/60 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-8 text-center"
+            className="bg-gray-900/浑 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-8 text-center"
           >
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
               Join Thunder to Unleash Creativity
