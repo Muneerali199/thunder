@@ -1,8 +1,10 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
 import { Home as HomeIcon, File, Settings, LayoutDashboard, Plus, History, DollarSign, Eye } from 'lucide-react';
+import { useMediaQuery } from 'react-responsive';
 import { Lightning } from '../components/lightning';
 
 // SVG Logo Component with Lightning Colors
@@ -41,6 +43,7 @@ export function Home() {
   });
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const isMobile = useMediaQuery({ maxWidth: 640 });
 
   const loadProjects = () => {
     try {
@@ -160,16 +163,16 @@ export function Home() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#0F172A] flex flex-col items-center justify-start p-10 relative overflow-hidden font-sans transition-all duration-300 ${
-      isSignedIn ? 'ml-16' : ''
+    <div className={`min-h-screen bg-[#0F172A] flex flex-col items-center justify-start p-4 sm:p-10 relative overflow-hidden font-sans transition-all duration-300 ${
+      isSignedIn ? 'sm:ml-16' : ''
     }`}>
-      {/* Lightning Background */}
-      <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />
+      {/* Lightning Background (Disabled on Mobile) */}
+      {!isMobile && <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />}
 
-      {/* Sidebar */}
+      {/* Sidebar (Desktop) */}
       <SignedIn>
         <motion.div
-          className={`fixed left-0 top-0 h-screen bg-gray-900/80 backdrop-blur-2xl border-r border-blue-500/40 z-50 ${
+          className={`hidden sm:flex fixed left-0 top-0 h-screen bg-gray-900/80 backdrop-blur-2xl border-r border-blue-500/40 z-50 ${
             isSidebarExpanded ? 'w-64' : 'w-16'
           } transition-all duration-300`}
           onMouseEnter={() => setIsSidebarExpanded(true)}
@@ -291,6 +294,69 @@ export function Home() {
             </div>
           </div>
         </motion.div>
+
+        {/* Mobile Bottom Navigation */}
+        <motion.div
+          className="sm:hidden fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-2xl border-t border-blue-500/40 z-50 flex justify-around items-center py-2"
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+        >
+          <motion.button
+            onClick={() => navigate('/')}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <HomeIcon className="h-6 w-6" />
+            <span className="text-xs">Home</span>
+          </motion.button>
+          <motion.button
+            onClick={() => navigate('/projects')}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <File className="h-6 w-6" />
+            <span className="text-xs">Projects</span>
+          </motion.button>
+          <motion.button
+            onClick={() => navigate('/')}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <Plus className="h-6 w-6" />
+            <span className="text-xs">New</span>
+          </motion.button>
+          <motion.button
+            onClick={() => navigate('/settings')}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <Settings className="h-6 w-6" />
+            <span className="text-xs">Settings</span>
+          </motion.button>
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: "w-6 h-6",
+                  userButtonPopoverCard: "bg-gray-900/80 border border-blue-500/40 backdrop-blur-2xl",
+                  userPreviewMainIdentifier: "text-blue-400",
+                  userButtonPopoverActionButtonText: "text-blue-200 hover:text-blue-400"
+                }
+              }}
+            />
+            <span className="text-xs">Profile</span>
+          </motion.div>
+        </motion.div>
       </SignedIn>
 
       {/* Usage Indicator */}
@@ -314,16 +380,16 @@ export function Home() {
         </div>
       </SignedIn>
 
-      {/* Navbar (Only for signed-out users) */}
+      {/* Navbar (Signed Out) */}
       <SignedOut>
-        <nav className="w-full max-w-4xl mb-10 relative z-20">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
+        <nav className="w-full max-w-4xl mb-6 sm:mb-10 relative z-20">
+          <div className="flex flex-col sm:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 sm:mb-0">
               <ThunderLogoSVG />
               <span className="text-blue-400 text-lg font-bold ml-2">Thunder</span>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <motion.button 
                 onClick={() => navigate('/pricing')}
                 className="text-blue-200 hover:text-blue-400 transition-colors"
@@ -363,7 +429,7 @@ export function Home() {
           className="text-center space-y-7"
         >
           <motion.h1
-            className="text-7xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent leading-tight tracking-tighter"
+            className="text-4xl sm:text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent leading-tight tracking-tighter"
             animate={{ backgroundPosition: '200%' }}
             transition={{ duration: 4, repeat: Infinity, repeatType: 'reverse' }}
             style={{ backgroundSize: '200%' }}
@@ -371,7 +437,7 @@ export function Home() {
             What do you want to build?
           </motion.h1>
           <motion.p
-            className="text-blue-200 text-xl font-light max-w-xl mx-auto tracking-wide"
+            className="text-blue-200 text-base sm:text-lg md:text-xl font-light max-w-xl mx-auto tracking-wide"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.7 }}
@@ -394,9 +460,9 @@ export function Home() {
                   onClick={() => fileInputRef.current?.click()}
                   whileHover={{ scale: 1.2, rotate: 15, boxShadow: '0 0 25px rgba(96, 165, 250, 0.8)' }}
                   whileTap={{ scale: 0.85 }}
-                  className="absolute bottom-5 left-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full p-4 shadow-lg shadow-blue-500/60 hover:shadow-purple-600/80 transition-all duration-500"
+                  className="absolute bottom-4 sm:bottom-5 left-4 sm:left-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full p-3 sm:p-4 shadow-lg shadow-blue-500/60 hover:shadow-purple-600/80 transition-all duration-500"
                 >
-                  <Plus className="h-6 w-6" />
+                  <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -410,8 +476,8 @@ export function Home() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="e.g. A modern SaaS website with animations and 3D assets"
-                  rows={6}
-                  className="w-full p-6 px-16 bg-transparent text-blue-100 rounded-xl border-none placeholder-blue-200/60 focus:outline-none focus:ring-4 focus:ring-blue-500/70 transition-all duration-500 text-lg resize-none"
+                  rows={4}
+                  className="w-full p-4 sm:p-6 sm:px-16 bg-transparent text-blue-100 rounded-xl border-none placeholder-blue-200/60 focus:outline-none focus:ring-4 focus:ring-blue-500/70 transition-all duration-500 text-base sm:text-lg resize-none"
                   whileFocus={{ scale: 1.03, boxShadow: '0 0 20px rgba(96, 165, 250, 0.5)' }}
                 />
 
@@ -420,7 +486,7 @@ export function Home() {
                     onClick={handleSubmit}
                     whileHover={{ scale: 1.15, boxShadow: '0 0 25px rgba(96, 165, 250, 0.8)' }}
                     whileTap={{ scale: 0.9 }}
-                    className="absolute bottom-8 right-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg px-8 py-3 text-sm font-semibold shadow-lg shadow-purple-600/60 hover:shadow-purple-600/80 transition-all duration-500 animate-pulse-glow"
+                    className="absolute bottom-4 sm:bottom-8 right-4 sm:right-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg px-6 sm:px-8 py-2 sm:py-3 text-sm font-semibold shadow-lg shadow-purple-600/60 hover:shadow-purple-600/80 transition-all duration-500 animate-pulse-glow"
                   >
                     Generate →
                   </motion.button>
@@ -460,7 +526,7 @@ export function Home() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.5, ease: [0.6, -0.05, 0.01, 0.99] }}
-            className="flex flex-wrap gap-5 justify-center"
+            className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-5 justify-center"
           >
             {recommendations.map((rec, index) => (
               <motion.button
@@ -468,7 +534,7 @@ export function Home() {
                 onClick={() => setPrompt(rec)}
                 whileHover={{ scale: 1.15, y: -5, boxShadow: '0 0 20px rgba(192, 38, 211, 0.6)' }}
                 whileTap={{ scale: 0.9 }}
-                className="bg-gray-900/60 backdrop-blur-2xl hover:bg-gray-800/70 border border-blue-500/40 text-blue-100 hover:text-blue-400 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-500 shadow-lg hover:shadow-2xl hover:shadow-purple-600/50"
+                className="bg-gray-900/60 backdrop-blur-2xl hover:bg-gray-800/70 border border-blue-500/40 text-blue-100 hover:text-blue-400 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-sm font-medium transition-all duration-500 shadow-lg hover:shadow-2xl hover:shadow-purple-600/50"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 * index + 0.7, duration: 0.6 }}
@@ -497,12 +563,12 @@ export function Home() {
                 {projects.slice(0, 5).map((project, index) => (
                   <motion.div
                     key={project.id}
-                    className="flex justify-between items-center bg-gray-800/50 p-4 rounded-lg border border-blue-500/20"
+                    className="flex sm:flex-row flex-col justify-between items-center bg-gray-800/50 p-3 sm:p-4 rounded-lg border border-blue-500/20"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 * index }}
                   >
-                    <div>
+                    <div className="mb-2 sm:mb-0">
                       <p className="text-blue-100 font-medium">{project.prompt}</p>
                       <p className="text-blue-400 text-sm">
                         Created: {new Date(project.createdAt).toLocaleDateString()}
