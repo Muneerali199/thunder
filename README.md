@@ -46,8 +46,8 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 | **Frontend**      | React, Next.js, TypeScript, Tailwind CSS |
 | **Backend**       | Node.js, Express, Socket.IO             |
 | **Database**      | MongoDB, Redis                          |
-| **Deployment**    | Vercel, Cloudflare CDN                  |
-| **Testing**       | Jest, Cypress, Storybook                |
+| **Deployment**    | Vercel, Render                          |
+| **Testing**       | Jest, Cypress, postman                  |
 
 ---
 
@@ -55,7 +55,6 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ### Prerequisites
 - **Node.js** v18+ installed on your system.
-- **MongoDB Atlas** account for the database.
 - **Vercel CLI** (optional, for deployment).
 
 ### Quick Start Guide
