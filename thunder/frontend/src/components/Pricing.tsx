@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
-const tiers = [
+const individualMonthlyTiers = [
   {
     name: 'Free',
     price: '0',
@@ -53,19 +54,177 @@ const tiers = [
     ],
     bg: 'from-green-600 to-emerald-500',
     button: 'Upgrade to Pro 100'
+  }
+];
+
+const individualAnnualTiers = [
+  {
+    name: 'Free',
+    price: '0',
+    tokens: '240K tokens',
+    description: 'Start with a free account to speed up your workflow on public projects',
+    features: [
+      'Basic usage for exploratory use',
+      'Public projects only',
+      'Community support'
+    ],
+    bg: 'from-gray-800 to-gray-900',
+    button: 'Current Plan'
+  },
+  {
+    name: 'Pro',
+    price: '18',
+    tokens: '10M tokens',
+    description: 'Ideal for hobbyists and casual users for light, exploratory use',
+    features: [
+      '10 million tokens per month',
+      'Private projects',
+      'Standard support',
+      'Save 10% with annual billing'
+    ],
+    bg: 'from-purple-600 to-pink-600',
+    button: 'Upgrade to Pro'
+  },
+  {
+    name: 'Pro 50',
+    price: '45',
+    tokens: '26M tokens',
+    description: 'Designed for professionals who need to use Bolt a few times per week',
+    features: [
+      '26 million tokens per month',
+      '25M additional tokens',
+      'Priority support',
+      'Save 10% with annual billing'
+    ],
+    bg: 'from-blue-600 to-cyan-500',
+    button: 'Upgrade to Pro 50'
+  },
+  {
+    name: 'Pro 100',
+    price: '90',
+    tokens: '55M tokens',
+    description: 'Perfect for heavy users looking to enhance daily workflows',
+    features: [
+      '55 million tokens per month',
+      '50M additional tokens',
+      'Priority support',
+      'Save 10% with annual billing'
+    ],
+    bg: 'from-green-600 to-emerald-500',
+    button: 'Upgrade to Pro 100'
   },
   {
     name: 'Pro 200',
-    price: '200',
+    price: '180',
     tokens: '120M tokens',
     description: 'Best for power users relying on Bolt as a core tool for continuous use',
     features: [
       '120 million tokens per month',
       '100M additional tokens',
-      'Premium support'
+      'Premium support',
+      'Save 10% with annual billing'
     ],
     bg: 'from-orange-600 to-red-500',
     button: 'Upgrade to Pro 200'
+  }
+];
+
+const teamMonthlyTiers = [
+  {
+    name: 'Teams 60',
+    price: '60',
+    tokens: '26M tokens',
+    perMember: true,
+    description: 'Designed for teams needing to use Bolt a few times per week',
+    features: [
+      '26 million tokens per member',
+      '25M additional tokens',
+      'Team management dashboard',
+      'Priority support'
+    ],
+    bg: 'from-blue-600 to-indigo-600',
+    button: 'Upgrade to Teams 60'
+  },
+  {
+    name: 'Teams 110',
+    price: '110',
+    tokens: '55M tokens',
+    perMember: true,
+    description: 'Perfect for teams seeking to enhance daily workflows',
+    features: [
+      '55 million tokens per member',
+      '50M additional tokens',
+      'Team management dashboard',
+      'Priority support'
+    ],
+    bg: 'from-purple-600 to-pink-600',
+    button: 'Upgrade to Teams 110'
+  },
+  {
+    name: 'Teams 210',
+    price: '210',
+    tokens: '120M tokens',
+    perMember: true,
+    description: 'Best for teams relying on Bolt as a core tool for continuous use',
+    features: [
+      '120 million tokens per member',
+      '100M additional tokens',
+      'Advanced team controls',
+      'Premium support'
+    ],
+    bg: 'from-cyan-600 to-blue-600',
+    button: 'Upgrade to Teams 210'
+  }
+];
+
+const teamAnnualTiers = [
+  {
+    name: 'Teams 60',
+    price: '54',
+    tokens: '26M tokens',
+    perMember: true,
+    description: 'Designed for teams needing to use Bolt a few times per week',
+    features: [
+      '26 million tokens per member',
+      '25M additional tokens',
+      'Team management dashboard',
+      'Priority support',
+      'Save 10% with annual billing'
+    ],
+    bg: 'from-blue-600 to-indigo-600',
+    button: 'Upgrade to Teams 60'
+  },
+  {
+    name: 'Teams 110',
+    price: '99',
+    tokens: '55M tokens',
+    perMember: true,
+    description: 'Perfect for teams seeking to enhance daily workflows',
+    features: [
+      '55 million tokens per member',
+      '50M additional tokens',
+      'Team management dashboard',
+      'Priority support',
+      'Save 10% with annual billing'
+    ],
+    bg: 'from-purple-600 to-pink-600',
+    button: 'Upgrade to Teams 110'
+  },
+  {
+    name: 'Teams 210',
+    price: '189',
+    tokens: '120M tokens',
+    perMember: true,
+    description: 'Best for teams relying on Bolt as a core tool for continuous use',
+    features: [
+      '120 million tokens per member',
+      '100M additional tokens',
+      'Advanced team controls',
+      'Premium support',
+      'Save 10% with annual billing'
+    ],
+    bg: 'from-cyan-600 to-blue-600',
+    button: 'Upgrade to Teams 210'
   }
 ];
 
@@ -76,7 +235,7 @@ const faqs = [
   },
   {
     question: 'How do Teams plans work?',
-    answer: 'Team plans allow multiple users to share a pool of tokens.'
+    answer: 'Team plans allow multiple users to share a pool of tokens with centralized billing and management.'
   },
   {
     question: 'Do tokens rollover from month to month?',
@@ -96,12 +255,21 @@ const faqs = [
   },
   {
     question: 'What are the token limits associated with a free plan?',
-    answer: 'Free plan includes 240K tokens per month.'
+    answer: 'Free plan includes 240K tokens per month for individual use only.'
   }
 ];
 
 export function Pricing() {
   const navigate = useNavigate();
+  const [showTeams, setShowTeams] = useState(false);
+  const [billingCycle, setBillingCycle] = useState('annual');
+
+  const getCurrentTiers = () => {
+    if (showTeams) {
+      return billingCycle === 'annual' ? teamAnnualTiers : teamMonthlyTiers;
+    }
+    return billingCycle === 'annual' ? individualAnnualTiers : individualMonthlyTiers;
+  };
 
   return (
     <div className="min-h-screen bg-black py-20 px-4">
@@ -123,45 +291,96 @@ export function Pricing() {
           Start with a free account to speed up your workflow on public projects or boost your entire team with instantly-opening production environments.
         </motion.p>
 
-        <div className="mb-8 text-center">
-          <div className="inline-block bg-gray-800/50 px-6 py-3 rounded-full">
-            <p className="text-gray-300">
-              <span className="font-bold text-cyan-400">240K tokens</span> left in your free plan. 
-              <span className="ml-2">Need more tokens?</span>
-            </p>
+        {!showTeams ? (
+          <div className="mb-8 text-center">
+            <div className="inline-block bg-gray-800/50 px-6 py-3 rounded-full">
+              <p className="text-gray-300">
+                <span className="font-bold text-cyan-400">240K tokens</span> left in your free plan. 
+                <span className="ml-2">Need more tokens?</span>
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mb-8 text-center">
+            <div className="inline-block bg-gray-800/50 px-6 py-3 rounded-full">
+              <p className="text-gray-300">
+                <span className="font-bold text-amber-400">No tokens available.</span>
+                <span className="ml-2">Using Bolt with a team requires a subscription.</span>
+              </p>
+            </div>
+          </div>
+        )}
 
-        <div className="flex justify-center mb-8">
+        <div className="flex flex-col items-center mb-12">
+          <div className="flex items-center mb-6">
+            <button
+              onClick={() => setShowTeams(false)}
+              className={`px-6 py-2 rounded-l-full font-medium ${!showTeams ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`}
+            >
+              Pro
+            </button>
+            <button
+              onClick={() => setShowTeams(true)}
+              className={`px-6 py-2 rounded-r-full font-medium ${showTeams ? 'bg-gray-700 text-white' : 'bg-gray-800 text-gray-400'}`}
+            >
+              Teams
+            </button>
+          </div>
+          
           <div className="bg-gray-800 rounded-full p-1">
-            <button className="px-4 py-2 rounded-full bg-gray-700 text-white">Monthly billing</button>
-            <button className="px-4 py-2 rounded-full text-gray-400">Annual billing</button>
+            <button 
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-4 py-2 rounded-full ${billingCycle === 'monthly' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
+            >
+              Monthly billing
+            </button>
+            <button 
+              onClick={() => setBillingCycle('annual')}
+              className={`px-4 py-2 rounded-full ${billingCycle === 'annual' ? 'bg-gray-700 text-white' : 'text-gray-400'}`}
+            >
+              Annual billing
+            </button>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
-          {tiers.map((tier, index) => (
+        {showTeams && (
+          <div className="max-w-md mx-auto bg-gray-900 rounded-xl p-4 mb-8">
+            <label htmlFor="team-select" className="block text-sm font-medium text-gray-300 mb-2">Current team:</label>
+            <select 
+              id="team-select"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option>New team (select plan)</option>
+            </select>
+          </div>
+        )}
+
+        <div className={`grid gap-6 mb-20 ${showTeams ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+          {getCurrentTiers().map((tier, index) => (
             <motion.div
-              key={tier.name}
+              key={`${tier.name}-${index}`}
               className={`bg-gradient-to-br ${tier.bg} p-0.5 rounded-2xl shadow-xl`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
             >
-              <div className="bg-gray-900/90 backdrop-blur-lg p-6 rounded-2xl h-full">
+              <div className="bg-gray-900/90 backdrop-blur-lg p-6 rounded-2xl h-full flex flex-col">
                 <h2 className="text-2xl font-bold text-white mb-2">{tier.name}</h2>
                 <p className="text-gray-300 text-sm mb-4">{tier.description}</p>
                 
                 <div className="mb-6">
                   <div className="text-4xl font-bold text-white">
-                    ${tier.price}<span className="text-lg">/month</span>
+                    ${tier.price}{tier.perMember && <span className="text-lg"> / member</span>}<span className="text-lg">/month</span>
                   </div>
                   <div className="text-gray-300">{tier.tokens}</div>
+                  <div className="text-sm text-gray-400 mt-1">
+                    {billingCycle === 'annual' ? 'Billed yearly' : 'Billed monthly'}
+                  </div>
                 </div>
                 
-                <ul className="space-y-3 mb-8">
-                  {tier.features.map(feature => (
-                    <li key={feature} className="flex items-start text-gray-100">
+                <ul className="space-y-3 mb-8 flex-grow">
+                  {tier.features.map((feature, i) => (
+                    <li key={i} className="flex items-start text-gray-100">
                       <svg className="w-5 h-5 mr-2 text-green-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
