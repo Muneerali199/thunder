@@ -1,9 +1,8 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, File, Settings, Plus, History, DollarSign, Eye, X, Trash2, Users, Database, Network, Download, CreditCard, Globe, PenTool, Code } from 'lucide-react';
+import { Home as HomeIcon, Settings, Plus, DollarSign, Eye, X, Trash2, Users, Database, Network, Download, CreditCard, Globe, PenTool, Code, Gift, LogOut } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Lightning } from '../components/lightning';
 
@@ -32,6 +31,10 @@ interface UserMetadata {
   monthlyTokens: number;
   totalMonthlyTokens: number;
   nextRefill: number;
+  referralId?: string;
+  referralTokensEarned?: number;
+  freeReferrals?: number;
+  proReferrals?: number;
 }
 
 interface Project {
@@ -50,7 +53,7 @@ export function Home() {
   const [prompt, setPrompt] = useState('');
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, signOut, userId } = useAuth();
   const { user } = useUser();
   const [usage, setUsage] = useState<UserMetadata>({
     tier: 'free',
@@ -64,13 +67,21 @@ export function Home() {
     monthlyTokens: 240000,
     totalMonthlyTokens: 1000000,
     nextRefill: 1000000,
+    referralId: '',
+    referralTokensEarned: 0,
+    freeReferrals: 0,
+    proReferrals: 0,
   });
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTokensPopupOpen, setIsTokensPopupOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('General');
   const isMobile = useMediaQuery({ maxWidth: 640 });
+
+  // Generate referral link
+  const referralLink = userId ? `https://thunder-muneer.vercel.app/?ref=${userId}` : '';
 
   const loadProjects = () => {
     try {
@@ -110,6 +121,10 @@ export function Home() {
           monthlyTokens: metadata.monthlyTokens ?? 240000,
           totalMonthlyTokens: metadata.totalMonthlyTokens ?? 1000000,
           nextRefill: metadata.nextRefill ?? 1000000,
+          referralId: metadata.referralId || userId || '',
+          referralTokensEarned: metadata.referralTokensEarned || 0,
+          freeReferrals: metadata.freeReferrals || 0,
+          proReferrals: metadata.proReferrals || 0,
         });
       } else {
         const localUsage = localStorage.getItem('usage');
@@ -129,7 +144,7 @@ export function Home() {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [isSignedIn, user]);
+  }, [isSignedIn, user, userId]);
 
   const recommendations = [
     'Design a futuristic portfolio for my digital art',
@@ -313,6 +328,23 @@ export function Home() {
     // TODO: Implement StackBlitz login/GitHub integration
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      alert('Failed to sign out.');
+    }
+  };
+
+  const handleCopyReferralLink = () => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink);
+      alert('Referral link copied!');
+    }
+  };
+
   const settingsCategories = [
     'General',
     'Appearance',
@@ -420,7 +452,7 @@ export function Home() {
           <div className="flex flex-col items-end space-y-3">
             <div className="w-full text-right">
               <h4 className="text-sm font-semibold text-blue-400 mb-2">Your Consumption</h4>
-              <p className="text-blue-200 text-xs">Free plan: alimuneerali245@gmail.com</p>
+              <p className="text-blue-200 text-xs">Free plan: {user?.primaryEmailAddress?.emailAddress || 'N/A'}</p>
               <p className="text-blue-200 text-xs">Daily limit consumption: {usage.dailyTokens}/150K tokens</p>
               <p className="text-blue-200 text-xs">Extra tokens left: {usage.extraTokens.toLocaleString()}</p>
               <p className="text-blue-200 text-xs">Monthly tokens left: {usage.monthlyTokens.toLocaleString()}/{usage.totalMonthlyTokens.toLocaleString()}</p>
@@ -500,7 +532,7 @@ export function Home() {
                   <p className="text-blue-400 text-xs font-semibold mr-2">Figma</p>
                   <PenTool className="h-4 w-4 text-blue-400" />
                 </div>
-                <p className="text-blue-200 text-xs mb-1">Import your Figma designs as code for Bolt analysis.</p>
+                <p className="text-blue-200 text-xs mb-1">Import your Figma designs as code for Thunder analysis.</p>
                 <motion.button
                   onClick={handleFigmaConnect}
                   whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
@@ -594,16 +626,12 @@ export function Home() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#0F172A] flex flex-col items-center justify-start p-4 sm:p-10 relative overflow-hidden font-sans transition-all duration-300 ${
-      isSignedIn ? 'sm:ml-16' : ''
-    }`}>
+    <div className={`min-h-screen bg-[#0F172A] flex flex-col items-center justify-start p-4 sm:p-10 relative overflow-hidden font-sans transition-all duration-300 ${isSignedIn ? 'sm:ml-16' : ''}`}>
       {!isMobile && <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />}
 
       <SignedIn>
         <motion.div
-          className={`hidden sm:flex fixed left-0 top-0 h-screen bg-gray-900/80 backdrop-blur-2xl border-r border-blue-500/40 z-50 ${
-            isSidebarExpanded ? 'w-64' : 'w-16'
-          } transition-all duration-300`}
+          className={`hidden sm:flex fixed left-0 top-0 h-screen bg-gray-900/80 backdrop-blur-2xl border-r border-blue-500/40 z-50 ${isSidebarExpanded ? 'w-64' : 'w-16'} transition-all duration-300`}
           onMouseEnter={() => setIsSidebarExpanded(true)}
           onMouseLeave={() => setIsSidebarExpanded(false)}
           initial={{ scaleX: 0 }}
@@ -627,20 +655,12 @@ export function Home() {
                 {isSidebarExpanded && <span className="text-sm">Home</span>}
               </motion.button>
               <motion.button
-                onClick={() => navigate('/projects')}
+                onClick={() => setIsTokensPopupOpen(true)}
                 whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
                 className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
               >
-                <File className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Projects</span>}
-              </motion.button>
-              <motion.button
-                onClick={() => navigate('/history')}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <History className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">History</span>}
+                <Gift className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Get Tokens</span>}
               </motion.button>
               <motion.button
                 onClick={() => navigate('/pricing')}
@@ -699,6 +719,14 @@ export function Home() {
                 <Settings className="h-5 w-5 flex-shrink-0" />
                 {isSidebarExpanded && <span className="text-sm">Settings</span>}
               </motion.button>
+              <motion.button
+                onClick={handleSignOut}
+                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
+              >
+                <LogOut className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Log Out</span>}
+              </motion.button>
             </div>
           </div>
         </motion.div>
@@ -719,13 +747,13 @@ export function Home() {
             <span className="text-xs">Home</span>
           </motion.button>
           <motion.button
-            onClick={() => navigate('/projects')}
+            onClick={() => setIsTokensPopupOpen(true)}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
           >
-            <File className="h-6 w-6" />
-            <span className="text-xs">Projects</span>
+            <Gift className="h-6 w-6" />
+            <span className="text-xs">Tokens</span>
           </motion.button>
           <motion.button
             onClick={() => navigate('/')}
@@ -736,6 +764,17 @@ export function Home() {
             <Plus className="h-6 w-6" />
             <span className="text-xs">New</span>
           </motion.button>
+          {projects.length > 0 && (
+            <motion.button
+              onClick={() => viewProject(projects[0].prompt)}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+            >
+              <Eye className="h-6 w-6" />
+              <span className="text-xs">Last</span>
+            </motion.button>
+          )}
           <motion.button
             onClick={() => setIsSettingsOpen(true)}
             whileHover={{ scale: 1.1 }}
@@ -744,6 +783,15 @@ export function Home() {
           >
             <Settings className="h-6 w-6" />
             <span className="text-xs">Settings</span>
+          </motion.button>
+          <motion.button
+            onClick={handleSignOut}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <LogOut className="h-6 w-6" />
+            <span className="text-xs">Log Out</span>
           </motion.button>
           <motion.div
             whileHover={{ scale: 1.1 }}
@@ -775,7 +823,7 @@ export function Home() {
               transition={{ duration: 0.3 }}
             >
               <motion.div
-                className="bg-gray-900/80 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl shadow-blue-500/30"
+                className="bg-gray-900/80 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-8 w-full max-w-lg shadow-2xl shadow-blue-500/30"
                 initial={{ scale: 0.8, y: 50 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.8, y: 50 }}
@@ -803,13 +851,20 @@ export function Home() {
                           onClick={() => setSelectedCategory(category)}
                           whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
                           whileTap={{ scale: 0.95 }}
-                          className={`text-left p-2 rounded-lg text-blue-200 hover:text-blue-400 hover:bg-blue-900/60 transition-colors text-xs ${
-                            selectedCategory === category ? 'bg-blue-900/60 text-blue-400' : ''
-                          }`}
+                          className={`text-left p-2 rounded-lg text-blue-200 hover:text-blue-400 hover:bg-blue-900/60 transition-colors text-xs ${selectedCategory === category ? 'bg-blue-900/60 text-blue-400' : ''}`}
                         >
                           {category}
                         </motion.button>
                       ))}
+                      <motion.button
+                        onClick={handleSignOut}
+                        whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+                        whileTap={{ scale: 0.95 }}
+                        className="text-left p-2 rounded-lg text-blue-200 hover:text-blue-400 hover:bg-blue-900/60 transition-colors text-xs flex items-center"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Log Out
+                      </motion.button>
                     </div>
                   </div>
                   <div className="flex-1 pl-4 overflow-y-auto">
@@ -817,6 +872,82 @@ export function Home() {
                       {selectedCategory}
                     </h3>
                     {renderSubOptions(selectedCategory)}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+          {isTokensPopupOpen && (
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                className="bg-gray-900/80 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl shadow-blue-500/30"
+                initial={{ scale: 0.8, y: 50 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.8, y: 50 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Refer Users: Earn Tokens
+                  </h2>
+                  <motion.button
+                    onClick={() => setIsTokensPopupOpen(false)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="text-blue-200 hover:text-blue-400"
+                  >
+                    <X className="h-5 w-5" />
+                  </motion.button>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-blue-200 text-sm">
+                    Earn 200K tokens for yourself & each new user you refer to Thunder.
+                  </p>
+                  <p className="text-blue-200 text-sm">
+                    Pro users: earn an additional 5M tokens for yourself & your referral when they upgrade to a Pro account within 30 days!
+                  </p>
+                  <div>
+                    <h3 className="text-blue-400 font-semibold mb-2">Referral tokens earned</h3>
+                    <p className="text-blue-200 text-sm">{(usage.referralTokensEarned ?? 0).toLocaleString()}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="text-blue-400 font-semibold mb-2">Free Referrals</h3>
+                      <p className="text-blue-200 text-sm">{usage.freeReferrals ?? 0}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-blue-400 font-semibold mb-2">Pro Referrals</h3>
+                      <p className="text-blue-200 text-sm">
+                        {usage.tier === 'pro' ? (usage.proReferrals ?? 0) : 'Upgrade to Pro to unlock Pro referrals'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-blue-200 text-sm mb-2">
+                      Use your personal referral link to invite users to join Thunder:
+                    </p>
+                    <div className="flex items-center bg-gray-800/50 p-2 rounded-lg">
+                      <input
+                        type="text"
+                        value={referralLink}
+                        readOnly
+                        className="bg-transparent text-blue-200 text-sm flex-1 focus:outline-none"
+                      />
+                      <motion.button
+                        onClick={handleCopyReferralLink}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-blue-500/30 hover:bg-blue-500/40 text-blue-400 px-3 py-1 rounded-lg text-sm"
+                      >
+                        Copy
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -999,58 +1130,6 @@ export function Home() {
                 {rec}
               </motion.button>
             ))}
-          </motion.div>
-        </SignedIn>
-
-        <SignedIn>
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.7, ease: [0.6, -0.05, 0.01, 0.99] }}
-            className="bg-gray-900/60 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-8 shadow-2xl shadow-blue-500/30"
-          >
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-6">
-              Your Project History
-            </h2>
-            {projects.length === 0 ? (
-              <p className="text-blue-200 text-center">No projects yet. Start creating!</p>
-            ) : (
-              <div className="space-y-4">
-                {projects.slice(0, 5).map((project, index) => (
-                  <motion.div
-                    key={project.id}
-                    className="flex sm:flex-row flex-col justify-between items-center bg-gray-800/50 p-3 sm:p-4 rounded-lg border border-blue-500/20"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                  >
-                    <div className="mb-2 sm:mb-0">
-                      <p className="text-blue-100 font-medium">{project.prompt}</p>
-                      <p className="text-blue-400 text-sm">
-                        Created: {new Date(project.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <motion.button
-                      onClick={() => viewProject(project.prompt)}
-                      whileHover={{ scale: 1.1, boxShadow: '0 0 15px rgba(96, 165, 250, 0.6)' }}
-                      whileTap={{ scale: 0.9 }}
-                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white p-2 rounded-full shadow-lg hover:shadow-purple-600/50 transition-all"
-                    >
-                      <Eye className="h-5 w-5" />
-                    </motion.button>
-                  </motion.div>
-                ))}
-                {projects.length > 5 && (
-                  <motion.button
-                    onClick={() => navigate('/history')}
-                    whileHover={{ scale: 1.05 }}
-                    className="w-full text-blue-400 hover:text-blue-300 mt-4"
-                  >
-                    View All Projects
-                  </motion.button>
-                )}
-              </div>
-            )}
           </motion.div>
         </SignedIn>
 

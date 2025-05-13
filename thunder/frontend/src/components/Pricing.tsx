@@ -2,7 +2,18 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
-const individualMonthlyTiers = [
+interface PricingTier {
+  name: string;
+  price: string;
+  tokens: string;
+  description: string;
+  features: string[];
+  bg: string;
+  button: string;
+  perMember?: boolean;
+}
+
+const individualMonthlyTiers: PricingTier[] = [
   {
     name: 'Free',
     price: '0',
@@ -57,7 +68,7 @@ const individualMonthlyTiers = [
   }
 ];
 
-const individualAnnualTiers = [
+const individualAnnualTiers: PricingTier[] = [
   {
     name: 'Free',
     price: '0',
@@ -129,7 +140,7 @@ const individualAnnualTiers = [
   }
 ];
 
-const teamMonthlyTiers = [
+const teamMonthlyTiers: PricingTier[] = [
   {
     name: 'Teams 60',
     price: '60',
@@ -177,7 +188,7 @@ const teamMonthlyTiers = [
   }
 ];
 
-const teamAnnualTiers = [
+const teamAnnualTiers: PricingTier[] = [
   {
     name: 'Teams 60',
     price: '54',
@@ -264,7 +275,7 @@ export function Pricing() {
   const [showTeams, setShowTeams] = useState(false);
   const [billingCycle, setBillingCycle] = useState('annual');
 
-  const getCurrentTiers = () => {
+  const getCurrentTiers = (): PricingTier[] => {
     if (showTeams) {
       return billingCycle === 'annual' ? teamAnnualTiers : teamMonthlyTiers;
     }
