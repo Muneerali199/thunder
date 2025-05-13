@@ -6,6 +6,7 @@ import { Pricing } from './components/Pricing';
 import { Checkout } from './components/checkout';
 import { ClerkProvider } from '@clerk/clerk-react';
 
+
 function App() {
   return (
     <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>

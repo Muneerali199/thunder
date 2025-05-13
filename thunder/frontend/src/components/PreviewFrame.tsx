@@ -4,9 +4,17 @@ import { FileItem } from '../types';
 
 interface PreviewFrameProps {
   webContainer: WebContainer | undefined;
+  files: FileItem[];
+  isWebContainerLoading: boolean;
+  webContainerError: Error | null;
 }
 
-export function PreviewFrame({ webContainer }: PreviewFrameProps) {
+export function PreviewFrame({ 
+  webContainer, 
+  files,
+  isWebContainerLoading,
+  webContainerError
+}: PreviewFrameProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -37,8 +45,15 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
   }, []);
 
   useEffect(() => {
+    if (isWebContainerLoading) return;
+    
+    if (webContainerError) {
+      setError(`WebContainer failed to initialize: ${webContainerError.message}`);
+      return;
+    }
+
     if (!webContainer) {
-      setError('WebContainer not initialized');
+      setError('WebContainer not available');
       return;
     }
 
@@ -53,18 +68,22 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
       setUrl("");
     };
 
-    webContainer.on('server-ready', handleServerReady);
-    webContainer.on('error', handleError);
+    // Store the disposer functions
+    const serverReadyDisposer = webContainer.on('server-ready', handleServerReady);
+    const errorDisposer = webContainer.on('error', handleError);
 
     const setupServer = async () => {
       try {
+        // Ensure project files are mounted
+        const mountStructure = createMountStructure(files);
+        await webContainer.mount(mountStructure);
+
         // Check if node_modules exists to skip installation
         const nodeModulesExists = await webContainer.fs.readdir('node_modules').catch(() => null);
         if (!nodeModulesExists) {
           setInstallOutput(prev => [...prev, 'Installing dependencies with pnpm...']);
           const installProcess = await webContainer.spawn('pnpm', ['install', '--registry=https://registry.npmjs.org']);
           
-          // Stream installation output
           installProcess.output.pipeTo(
             new WritableStream({
               write(chunk) {
@@ -96,23 +115,83 @@ export function PreviewFrame({ webContainer }: PreviewFrameProps) {
     setupServer();
 
     return () => {
-      (webContainer as any).off?.('server-ready', handleServerReady);
-      (webContainer as any).off?.('error', handleError);
+      // Clean up event listeners using the disposer functions
+      serverReadyDisposer();
+      errorDisposer();
     };
-  }, [webContainer]);
+  }, [webContainer, files, isWebContainerLoading, webContainerError]);
+
+  const createMountStructure = (files: FileItem[]): Record<string, any> => {
+    const mountStructure: Record<string, any> = {};
+    const processFile = (file: FileItem, isRootFolder: boolean) => {
+      if (file.type === 'folder') {
+        mountStructure[file.name] = {
+          directory: file.children
+            ? Object.fromEntries(
+                file.children.map(child => [child.name, processFile(child, false)])
+              )
+            : {},
+        };
+      } else if (file.type === 'file') {
+        if (isRootFolder) {
+          mountStructure[file.name] = {
+            file: {
+              contents: file.content || '',
+            },
+          };
+        } else {
+          return {
+            file: {
+              contents: file.content || '',
+            },
+          };
+        }
+      }
+      return mountStructure[file.name];
+    };
+    files.forEach(file => processFile(file, true));
+    return mountStructure;
+  };
 
   return (
     <div className="h-full flex items-center justify-center text-gray-400 relative">
-      {error && !url && (
+      {isWebContainerLoading && (
+        <div className="text-center">
+          <p className="mb-2">Initializing WebContainer environment...</p>
+          <div className="inline-block animate-spin">
+            <svg
+              stroke="currentColor"
+              fill="none"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-6 h-6"
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {webContainerError && (
+        <div className="text-center">
+          <p className="mb-2 text-red-400">Initialization Error</p>
+          <p className="text-sm">{webContainerError.message}</p>
+          <p className="text-xs mt-2">Please refresh the page to try again</p>
+        </div>
+      )}
+
+      {!isWebContainerLoading && !webContainerError && error && !url && (
         <div className="text-center">
           <p className="mb-2 text-red-400">{error}</p>
           <p className="text-sm">Check the console for more details</p>
         </div>
       )}
 
-      {!url && !error && (
+      {!isWebContainerLoading && !webContainerError && !url && !error && (
         <div className="text-center">
-          <p className="mb-2">Setting up environment...</p>
+          <p className="mb-2">Setting up project environment...</p>
           <div className="max-h-40 overflow-y-auto text-sm text-gray-500">
             {installOutput.map((line, index) => (
               <p key={index}>{line}</p>

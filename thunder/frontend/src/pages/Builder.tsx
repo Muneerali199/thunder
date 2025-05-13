@@ -341,7 +341,7 @@ export function Builder() {
   const [llmMessages, setLlmMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
-  const webContainer = useWebContainer();
+  const { webcontainer, isLoading: isWebContainerLoading, error: webContainerError } = useWebContainer();
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [githubUser, setGithubUser] = useState<string | null>(null);
   const [codeVerifier, setCodeVerifier] = useState<string | null>(null);
@@ -356,7 +356,7 @@ export function Builder() {
   // Ensure package.json exists when mounting files
   useEffect(() => {
     const packageJsonExists = files.some(file => file.name === 'package.json');
-    if (!packageJsonExists && webContainer) {
+    if (!packageJsonExists && webcontainer) {
       const minimalPackageJson = {
         name: 'project',
         version: '1.0.0',
@@ -368,7 +368,7 @@ export function Builder() {
         },
         dependencies: {}
       };
-      webContainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
+      webcontainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
       setFiles(prev => [
         ...prev,
         {
@@ -379,7 +379,7 @@ export function Builder() {
         }
       ]);
     }
-  }, [files, webContainer]);
+  }, [files, webcontainer]);
 
   useEffect(() => {
     if (!prompt && location.pathname === '/github-callback') {
@@ -653,11 +653,11 @@ export function Builder() {
       files.forEach(file => processFile(file, true));
       return mountStructure;
     };
-    if (webContainer && files.length > 0) {
+    if (webcontainer && files.length > 0) {
       const mountStructure = createMountStructure(files);
-      webContainer.mount(mountStructure);
+      webcontainer.mount(mountStructure);
     }
-  }, [files, webContainer]);
+  }, [files, webcontainer]);
 
   async function init() {
     if (!prompt) return;
@@ -939,8 +939,12 @@ export function Builder() {
                     </div>
                   ) : (
                     <div className="flex-1">
-                      {/* Note: Ensure PreviewFrameProps in previewframe.tsx includes files: FileItem[] */}
-                      <PreviewFrame webContainer={webContainer} files={files} />
+                      <PreviewFrame 
+                        webContainer={webcontainer} 
+                        files={files}
+                        isWebContainerLoading={isWebContainerLoading}
+                        webContainerError={webContainerError}
+                      />
                     </div>
                   )}
                 </div>
@@ -953,7 +957,7 @@ export function Builder() {
                 variants={itemVariants}
               >
                 <Terminal
-                  webContainer={webContainer}
+                  webContainer={webcontainer}
                   onCommand={handleTerminalCommand}
                   files={files}
                   setFiles={setFiles}
@@ -1075,11 +1079,15 @@ export function Builder() {
                   ) : (
                     <>
                       <div className="flex-1">
-                        {/* Note: Ensure PreviewFrameProps in previewframe.tsx includes files: FileItem[] */}
-                        <PreviewFrame webContainer={webContainer} files={files} />
+                        <PreviewFrame 
+                          webContainer={webcontainer} 
+                          files={files}
+                          isWebContainerLoading={isWebContainerLoading}
+                          webContainerError={webContainerError}
+                        />
                       </div>
                       <Terminal
-                        webContainer={webContainer}
+                        webContainer={webcontainer}
                         onCommand={handleTerminalCommand}
                         files={files}
                         setFiles={setFiles}
