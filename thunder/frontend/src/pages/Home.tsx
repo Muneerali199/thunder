@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, Settings, Plus, DollarSign, Eye, X, Trash2, Users, Database, Network, Download, CreditCard, Globe, PenTool, Code, Gift, LogOut } from 'lucide-react';
+import { Home as HomeIcon, Settings, Plus, DollarSign, Eye, X, Trash2, Users, Database, Network, Download, CreditCard, Globe, PenTool, Code, Gift, LogOut, HelpCircle } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 import { Lightning } from '../components/lightning';
 
@@ -326,6 +326,10 @@ export function Home() {
   const handleStackBlitzVisit = () => {
     window.open('https://stackblitz.com', '_blank');
     // TODO: Implement StackBlitz login/GitHub integration
+  };
+
+  const handleHelpCenterVisit = () => {
+    window.open('https://thunder-docs.vercel.app/', '_blank');
   };
 
   const handleSignOut = async () => {
@@ -671,6 +675,14 @@ export function Home() {
                 {isSidebarExpanded && <span className="text-sm">Pricing</span>}
               </motion.button>
               <motion.button
+                onClick={handleHelpCenterVisit}
+                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
+              >
+                <HelpCircle className="h-5 w-5 flex-shrink-0" />
+                {isSidebarExpanded && <span className="text-sm">Help Center</span>}
+              </motion.button>
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 className="w-full mt-4 bg-blue-500/30 hover:bg-blue-500/40 text-blue-400 p-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
                 onClick={() => navigate('/')}
@@ -754,6 +766,15 @@ export function Home() {
           >
             <Gift className="h-6 w-6" />
             <span className="text-xs">Tokens</span>
+          </motion.button>
+          <motion.button
+            onClick={handleHelpCenterVisit}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
+          >
+            <HelpCircle className="h-6 w-6" />
+            <span className="text-xs">Help</span>
           </motion.button>
           <motion.button
             onClick={() => navigate('/')}

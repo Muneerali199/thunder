@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { StepsList } from '../components/StepsList';
@@ -6,322 +6,19 @@ import { FileExplorer } from '../components/FileExplorer';
 import { TabView } from '../components/TabView';
 import { CodeEditor } from '../components/CodeEditor';
 import { PreviewFrame } from '../components/PreviewFrame';
+import { Terminal } from '../components/terminal';
 import { Step, FileItem, StepType } from '../types';
 import axios from 'axios';
 import { BACKEND_URL } from '../config';
 import { parseXml } from '../steps';
 import { useWebContainer } from '../hooks/useWebContainer';
 import { Loader } from '../components/Loader';
-import { WebContainer } from '@webcontainer/api';
 import { Lightning } from '../components/lightning';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { Octokit } from '@octokit/core';
 import CryptoJS from 'crypto-js';
 import { useMediaQuery } from 'react-responsive';
-
-// Terminal Component
-const Terminal: React.FC<{
-  webContainer: WebContainer | undefined;
-  onCommand: (command: string) => void;
-  files?: FileItem[];
-  setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
-  prompt: string;
-  githubToken: string | null;
-  githubUser: string | null;
-  deployToGitHub: (repoName: string) => Promise<void>;
-}> = ({ webContainer, onCommand, files, setFiles, prompt, githubToken, githubUser, deployToGitHub }) => {
-  const [command, setCommand] = useState('');
-  const [output, setOutput] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const terminalRef = useRef<HTMLDivElement>(null);
-
-  const executeCommand = async (cmd: string) => {
-    if (!webContainer) {
-      const errorMsg = 'Error: WebContainer not initialized';
-      setOutput(prev => [...prev, errorMsg]);
-      setError(errorMsg);
-      return;
-    }
-
-    const args = cmd.trim().split(' ');
-    const commandName = args[0];
-    const commandArgs = args.slice(1);
-
-    setOutput(prev => [...prev, `> ${cmd}`]);
-    setError(null);
-
-    try {
-      if (commandName === 'deploy') {
-        if (!githubToken || !githubUser) {
-          const errorMsg = 'Error: Not authenticated with GitHub. Please log in.';
-          setOutput(prev => [...prev, errorMsg]);
-          setError(errorMsg);
-          return;
-        }
-        const repoName = commandArgs[0] || `project-${Date.now()}`;
-        setOutput(prev => [...prev, `Deploying to GitHub repository: ${githubUser}/${repoName}`]);
-        await deployToGitHub(repoName);
-        setOutput(prev => [...prev, `Successfully deployed to https://github.com/${githubUser}/${repoName}`]);
-      } else if (commandName === 'bolt.new') {
-        setOutput(prev => [...prev, 'Executing bolt.new...']);
-        const process = await webContainer.spawn('pnpm', ['init']);
-        process.output.pipeTo(new WritableStream({
-          write(chunk) {
-            setOutput(prev => [...prev, chunk]);
-          }
-        }));
-        const exitCode = await process.exit;
-        if (exitCode !== 0) {
-          const errorMsg = `Command "${cmd}" failed with exit code ${exitCode}`;
-          setOutput(prev => [...prev, errorMsg]);
-          setError(errorMsg);
-        } else {
-          setOutput(prev => [...prev, 'Project initialized with bolt.new']);
-        }
-      } else {
-        const process = await webContainer.spawn(commandName, commandArgs);
-        process.output.pipeTo(new WritableStream({
-          write(chunk) {
-            setOutput(prev => [...prev, chunk]);
-          }
-        }));
-        const exitCode = await process.exit;
-        if (exitCode !== 0) {
-          const errorMsg = `Command "${cmd}" failed with exit code ${exitCode}`;
-          setOutput(prev => [...prev, errorMsg]);
-          setError(errorMsg);
-        }
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const fullError = `Error executing "${cmd}": ${errorMessage}`;
-      setOutput(prev => [...prev, fullError]);
-      setError(fullError);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (command.trim()) {
-      onCommand(command);
-      executeCommand(command);
-      setCommand('');
-    }
-  };
-
-  const handleFixError = async () => {
-    if (!error) return;
-    try {
-      setOutput(prev => [...prev, 'Attempting to fix error...']);
-      const response = await axios.post(`${BACKEND_URL}/template`, {
-        prompt: prompt.trim(),
-        error
-      });
-      const { files: newFiles } = response.data;
-      setFiles(newFiles);
-      setOutput(prev => [...prev, 'Project files updated to fix error']);
-      setError(null);
-      if (webContainer) {
-        const mountStructure = createMountStructure(newFiles);
-        await webContainer.mount(mountStructure);
-      }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fix error';
-      setOutput(prev => [...prev, `Error fixing project: ${errorMessage}`]);
-      setError(`Error fixing project: ${errorMessage}`);
-    }
-  };
-
-  const fixDependencyError = async () => {
-    if (!webContainer) {
-      setOutput(prev => [...prev, 'Error: WebContainer not initialized']);
-      return;
-    }
-
-    setOutput(prev => [...prev, 'Attempting to fix dependency installation...']);
-
-    try {
-      // Step 1: Clear pnpm cache
-      setOutput(prev => [...prev, 'Clearing pnpm cache...']);
-      await webContainer.spawn('pnpm', ['cache', 'clear']);
-      setOutput(prev => [...prev, 'pnpm cache cleared']);
-
-      // Step 2: Ensure package.json exists
-      const packageJsonExists = files?.some(file => file.name === 'package.json');
-      if (!packageJsonExists) {
-        setOutput(prev => [...prev, 'No package.json found. Creating minimal package.json...']);
-        const minimalPackageJson = {
-          name: 'project',
-          version: '1.0.0',
-          private: true,
-          scripts: {
-            dev: 'vite',
-            build: 'vite build',
-            preview: 'vite preview'
-          },
-          dependencies: {}
-        };
-        await webContainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
-        setFiles(prev => [
-          ...prev,
-          {
-            name: 'package.json',
-            type: 'file',
-            path: '/package.json',
-            content: JSON.stringify(minimalPackageJson, null, 2)
-          }
-        ]);
-        setOutput(prev => [...prev, 'Minimal package.json created']);
-      }
-
-      // Step 3: Retry pnpm install with fallback registry
-      setOutput(prev => [...prev, 'Retrying pnpm install...']);
-      const installProcess = await webContainer.spawn('pnpm', [
-        'install',
-        '--registry=https://registry.npmjs.org',
-        '--prefer-offline'
-      ]);
-      let installOutput = '';
-      installProcess.output.pipeTo(new WritableStream({
-        write(chunk) {
-          installOutput += chunk;
-          setOutput(prev => [...prev, chunk]);
-        }
-      }));
-      const exitCode = await installProcess.exit;
-      if (exitCode !== 0) {
-        const errorMsg = `pnpm install failed with exit code ${exitCode}: ${installOutput}`;
-        setOutput(prev => [...prev, errorMsg]);
-        setError(errorMsg);
-        return;
-      }
-      setOutput(prev => [...prev, 'Dependencies installed successfully']);
-      setError(null);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fix dependencies';
-      setOutput(prev => [...prev, `Error fixing dependencies: ${errorMessage}`]);
-      setError(`Error fixing dependencies: ${errorMessage}`);
-    }
-  };
-
-  const createMountStructure = (files: FileItem[]): Record<string, any> => {
-    const mountStructure: Record<string, any> = {};
-    const processFile = (file: FileItem, isRootFolder: boolean) => {
-      if (file.type === 'folder') {
-        mountStructure[file.name] = {
-          directory: file.children ?
-            Object.fromEntries(
-              file.children.map(child => [child.name, processFile(child, false)])
-            )
-            : {}
-        };
-      } else if (file.type === 'file') {
-        if (isRootFolder) {
-          mountStructure[file.name] = {
-            file: {
-              contents: file.content || ''
-            }
-          };
-        } else {
-          return {
-            file: {
-              contents: file.content || ''
-            }
-          };
-        }
-      }
-      return mountStructure[file.name];
-    };
-    files.forEach(file => processFile(file, true));
-    return mountStructure;
-  };
-
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [output]);
-
-  useEffect(() => {
-    if (!webContainer) return;
-
-    const installDependencies = async () => {
-      try {
-        setOutput(prev => [...prev, 'Installing dependencies with pnpm...']);
-        const installProcess = await webContainer.spawn('pnpm', [
-          'install',
-          '--registry=https://registry.npmjs.org',
-          '--prefer-offline'
-        ]);
-        let installOutput = '';
-        installProcess.output.pipeTo(new WritableStream({
-          write(chunk) {
-            installOutput += chunk;
-            setOutput(prev => [...prev, chunk]);
-          }
-        }));
-        const exitCode = await installProcess.exit;
-        if (exitCode !== 0) {
-          const errorMsg = `pnpm install failed with exit code ${exitCode}: ${installOutput}`;
-          setOutput(prev => [...prev, errorMsg]);
-          setError(errorMsg);
-          await fixDependencyError(); // Automatically attempt to fix
-        } else {
-          setOutput(prev => [...prev, 'Dependencies installed successfully']);
-        }
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setOutput(prev => [...prev, `Error installing dependencies: ${errorMessage}`]);
-        setError(`Error installing dependencies: ${errorMessage}`);
-        fixDependencyError(); // Automatically attempt to fix
-      }
-    };
-
-    installDependencies();
-
-    webContainer.on('server-ready', (_port: number, url: string) => {
-      setOutput(prev => [...prev, `Server running at: ${url}`]);
-    });
-  }, [webContainer]);
-
-  return (
-    <div className="bg-gray-900/80 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[15vh] sm:h-[20vh] min-h-[80px] flex flex-col shadow-lg shadow-blue-500/30">
-      <div className="flex-1 overflow-y-auto mb-2 font-mono text-xs sm:text-sm text-blue-100" ref={terminalRef}>
-        {output.map((line, index) => (
-          <div key={index} className={`whitespace-pre-wrap ${line.includes('Error') ? 'text-red-400' : ''}`}>
-            {line}
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <form onSubmit={handleSubmit} className="flex flex-1">
-          <input
-            type="text"
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            placeholder="Enter command (e.g., pnpm install, deploy [repo-name])"
-            className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-xs sm:text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-          />
-          <button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-r-lg text-xs sm:text-sm font-medium"
-          >
-            Run
-          </button>
-        </form>
-        {error && (
-          <button
-            onClick={handleFixError}
-            className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium"
-          >
-            Fix
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -715,7 +412,6 @@ export function Builder() {
 
   return (
     <div className="min-h-screen bg-[#0F172A] flex flex-col relative overflow-hidden font-sans">
-      {/* Lightning Background (Disabled on Mobile) */}
       {!isMobile && <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />}
 
       <motion.header
@@ -802,7 +498,6 @@ export function Builder() {
             initial="hidden"
             animate="visible"
           >
-            {/* Mobile Navigation Tabs */}
             <div className="flex justify-around bg-gray-900/60 backdrop-blur-2xl rounded-xl border border-blue-500/40 p-2 shadow-lg shadow-blue-500/30">
               <motion.button
                 onClick={() => setActiveSection('steps')}
@@ -838,7 +533,6 @@ export function Builder() {
               </motion.button>
             </div>
 
-            {/* Mobile Sections */}
             {activeSection === 'steps' && (
               <motion.div
                 className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-12rem)] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30"
