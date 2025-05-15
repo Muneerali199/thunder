@@ -6,7 +6,7 @@ import { FileItem } from '../types';
 import { BACKEND_URL } from '../config';
 
 interface TerminalProps {
-  webContainer: WebContainer | undefined;
+  webContainer: WebContainer | null; // Updated to match useWebContainer
   onCommand: (command: string) => void;
   files?: FileItem[];
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
@@ -14,6 +14,8 @@ interface TerminalProps {
   githubToken: string | null;
   githubUser: string | null;
   deployToGitHub: (repoName: string) => Promise<void>;
+  isWebContainerLoading: boolean; // Added for retry feedback
+  webContainerError: Error | null; // Added for error feedback
 }
 
 export const Terminal: React.FC<TerminalProps> = ({
@@ -25,6 +27,8 @@ export const Terminal: React.FC<TerminalProps> = ({
   githubToken,
   githubUser,
   deployToGitHub,
+  isWebContainerLoading,
+  webContainerError,
 }) => {
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<string[]>([]);
@@ -240,6 +244,19 @@ export const Terminal: React.FC<TerminalProps> = ({
   }, [output]);
 
   useEffect(() => {
+    // Display WebContainer initialization status
+    if (isWebContainerLoading) {
+      setOutput((prev) => [...prev, 'Initializing WebContainer environment...']);
+    } else if (webContainerError) {
+      const errorMsg = `WebContainer failed to initialize: ${webContainerError.message}`;
+      setOutput((prev) => [...prev, errorMsg]);
+      setError(errorMsg);
+    } else if (webContainer) {
+      setOutput((prev) => [...prev, 'WebContainer initialized successfully']);
+    }
+  }, [isWebContainerLoading, webContainerError, webContainer]);
+
+  useEffect(() => {
     if (!webContainer) return;
 
     const installDependencies = async () => {
@@ -303,10 +320,12 @@ export const Terminal: React.FC<TerminalProps> = ({
             onChange={(e) => setCommand(e.target.value)}
             placeholder="Enter command (e.g., pnpm install, deploy [repo-name])"
             className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-xs sm:text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+            disabled={isWebContainerLoading} // Disable input during loading
           />
           <button
             type="submit"
             className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-r-lg text-xs sm:text-sm font-medium"
+            disabled={isWebContainerLoading} // Disable button during loading
           >
             Run
           </button>

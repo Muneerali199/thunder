@@ -38,7 +38,7 @@ export function Builder() {
   const [llmMessages, setLlmMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [templateSet, setTemplateSet] = useState(false);
-  const { webcontainer, isLoading: isWebContainerLoading, error: webContainerError } = useWebContainer();
+  const { webcontainer, isLoading: isWebContainerLoading, error: webContainerError, retryCount, maxRetries } = useWebContainer();
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [githubUser, setGithubUser] = useState<string | null>(null);
   const [codeVerifier, setCodeVerifier] = useState<string | null>(null);
@@ -638,6 +638,8 @@ export function Builder() {
                         files={files}
                         isWebContainerLoading={isWebContainerLoading}
                         webContainerError={webContainerError}
+                        retryCount={retryCount}
+                        maxRetries={maxRetries}
                       />
                     </div>
                   )}
@@ -659,6 +661,8 @@ export function Builder() {
                   githubToken={githubToken}
                   githubUser={githubUser}
                   deployToGitHub={handleDeployToGitHub}
+                  isWebContainerLoading={isWebContainerLoading}
+                  webContainerError={webContainerError}
                 />
               </motion.div>
             )}
@@ -778,6 +782,8 @@ export function Builder() {
                           files={files}
                           isWebContainerLoading={isWebContainerLoading}
                           webContainerError={webContainerError}
+                          retryCount={retryCount}
+                          maxRetries={maxRetries}
                         />
                       </div>
                       <Terminal
@@ -789,6 +795,8 @@ export function Builder() {
                         githubToken={githubToken}
                         githubUser={githubUser}
                         deployToGitHub={handleDeployToGitHub}
+                        isWebContainerLoading={isWebContainerLoading}
+                        webContainerError={webContainerError}
                       />
                     </>
                   )}

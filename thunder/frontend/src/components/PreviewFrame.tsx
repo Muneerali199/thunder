@@ -3,23 +3,29 @@ import { useEffect, useState, useRef } from 'react';
 import { FileItem } from '../types';
 
 interface PreviewFrameProps {
-  webContainer: WebContainer | undefined;
+  webContainer: WebContainer | null; // Allow null
   files: FileItem[];
   isWebContainerLoading: boolean;
   webContainerError: Error | null;
+  retryCount?: number; // Optional retry count
+  maxRetries?: number; // Optional max retries
 }
 
 export function PreviewFrame({ 
   webContainer, 
   files,
   isWebContainerLoading,
-  webContainerError
+  webContainerError,
+  retryCount = 0,
+  maxRetries = 3
 }: PreviewFrameProps) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [installOutput, setInstallOutput] = useState<string[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const toggleFullScreen = () => {
     if (!previewRef.current) return;
@@ -31,6 +37,10 @@ export function PreviewFrame({
     } else {
       document.exitFullscreen();
     }
+  };
+
+  const refreshIframe = () => {
+    setRefreshKey(prev => prev + 1);
   };
 
   useEffect(() => {
@@ -48,7 +58,7 @@ export function PreviewFrame({
     if (isWebContainerLoading) return;
     
     if (webContainerError) {
-      setError(`WebContainer failed to initialize: ${webContainerError.message}`);
+      setError(`WebContainer failed to initialize: ${webContainerError.message}${retryCount < maxRetries ? ` (Retrying ${retryCount + 1}/${maxRetries}...)` : ''}`);
       return;
     }
 
@@ -60,6 +70,7 @@ export function PreviewFrame({
     const handleServerReady = (_port: number, url: string) => {
       setUrl(url);
       setError(null);
+      refreshIframe();
     };
 
     const handleError = (err: unknown) => {
@@ -68,17 +79,14 @@ export function PreviewFrame({
       setUrl("");
     };
 
-    // Store the disposer functions
     const serverReadyDisposer = webContainer.on('server-ready', handleServerReady);
     const errorDisposer = webContainer.on('error', handleError);
 
     const setupServer = async () => {
       try {
-        // Ensure project files are mounted
         const mountStructure = createMountStructure(files);
         await webContainer.mount(mountStructure);
 
-        // Check if node_modules exists to skip installation
         const nodeModulesExists = await webContainer.fs.readdir('node_modules').catch(() => null);
         if (!nodeModulesExists) {
           setInstallOutput(prev => [...prev, 'Installing dependencies with pnpm...']);
@@ -101,7 +109,6 @@ export function PreviewFrame({
           setInstallOutput(prev => [...prev, 'Dependencies already installed, skipping...']);
         }
 
-        // Start the dev server
         const devProcess = await webContainer.spawn('pnpm', ['run', 'dev']);
         const devExitCode = await devProcess.exit;
         if (devExitCode !== 0) {
@@ -115,11 +122,20 @@ export function PreviewFrame({
     setupServer();
 
     return () => {
-      // Clean up event listeners using the disposer functions
       serverReadyDisposer();
       errorDisposer();
     };
-  }, [webContainer, files, isWebContainerLoading, webContainerError]);
+  }, [webContainer, isWebContainerLoading, webContainerError, files]);
+
+  useEffect(() => {
+    if (url && !isWebContainerLoading && !webContainerError) {
+      const timer = setTimeout(() => {
+        refreshIframe();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [files, url, isWebContainerLoading, webContainerError]);
 
   const createMountStructure = (files: FileItem[]): Record<string, any> => {
     const mountStructure: Record<string, any> = {};
@@ -177,8 +193,10 @@ export function PreviewFrame({
       {webContainerError && (
         <div className="text-center">
           <p className="mb-2 text-red-400">Initialization Error</p>
-          <p className="text-sm">{webContainerError.message}</p>
-          <p className="text-xs mt-2">Please refresh the page to try again</p>
+          <p className="text-sm">{error}</p>
+          {retryCount >= maxRetries && (
+            <p className="text-xs mt-2">All retries failed. Please check your network and try refreshing the page.</p>
+          )}
         </div>
       )}
 
@@ -216,6 +234,8 @@ export function PreviewFrame({
       {url && (
         <div ref={previewRef} className="relative h-full w-full">
           <iframe
+            key={refreshKey}
+            ref={iframeRef}
             width="100%"
             height="100%"
             src={url}
