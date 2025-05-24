@@ -6,7 +6,7 @@ import { FileExplorer } from '../components/FileExplorer';
 import { TabView } from '../components/TabView';
 import { CodeEditor } from '../components/CodeEditor';
 import { PreviewFrame } from '../components/PreviewFrame';
-import { Terminal } from '../components/terminal';
+import { Terminal } from '../components/terminal'; // Fixed casing to match file name
 import { Step, FileItem, StepType } from '../types';
 import axios from 'axios';
 import { BACKEND_URL } from '../config';
@@ -34,20 +34,21 @@ export function Builder() {
   const location = useLocation();
   const navigate = useNavigate();
   const { prompt } = (location.state || {}) as { prompt?: string };
-  const [userPrompt, setPrompt] = useState("");
+  const [userPrompt, setPrompt] = useState<string>("");
   const [llmMessages, setLlmMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [templateSet, setTemplateSet] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [templateSet, setTemplateSet] = useState<boolean>(false);
   const { webcontainer, isLoading: isWebContainerLoading, error: webContainerError, retryCount, maxRetries } = useWebContainer();
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const [githubUser, setGithubUser] = useState<string | null>(null);
   const [codeVerifier, setCodeVerifier] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [activeSection, setActiveSection] = useState<'steps' | 'files' | 'editor' | 'terminal'>('steps');
+  const [isDependenciesInstalled, setIsDependenciesInstalled] = useState<boolean>(false);
   const isMobile = useMediaQuery({ maxWidth: 640 });
 
   // Ensure package.json exists when mounting files
@@ -61,9 +62,13 @@ export function Builder() {
         scripts: {
           dev: 'vite',
           build: 'vite build',
-          preview: 'vite preview'
+          preview: 'vite preview',
+          deploy: 'netlify deploy --prod'
         },
-        dependencies: {}
+        dependencies: {},
+        devDependencies: {
+          'netlify-cli': 'latest'
+        }
       };
       webcontainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
       setFiles(prev => [
@@ -76,7 +81,32 @@ export function Builder() {
         }
       ]);
     }
-  }, [files, webcontainer]);
+  }, [files, webcontainer, setFiles]);
+
+  // Install dependencies when WebContainer is ready
+  useEffect(() => {
+    const installDependencies = async () => {
+      if (webcontainer && !isDependenciesInstalled && files.some(file => file.name === 'package.json')) {
+        try {
+          setLoading(true);
+          const installProcess = await webcontainer.spawn('npm', ['install']);
+          const installExitCode = await installProcess.exit;
+          if (installExitCode === 0) {
+            setIsDependenciesInstalled(true);
+            setLlmMessages(prev => [...prev, { role: "assistant", content: "Dependencies installed successfully." }]);
+          } else {
+            setLlmMessages(prev => [...prev, { role: "assistant", content: "Failed to install dependencies." }]);
+          }
+        } catch (error) {
+          console.error('Error installing dependencies:', error);
+          setLlmMessages(prev => [...prev, { role: "assistant", content: "Error installing dependencies." }]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    installDependencies();
+  }, [webcontainer, isDependenciesInstalled, files]);
 
   useEffect(() => {
     if (!prompt && location.pathname === '/github-callback') {
@@ -86,7 +116,7 @@ export function Builder() {
     }
   }, [prompt, location.pathname, navigate]);
 
-  const generateCodeVerifier = () => {
+  const generateCodeVerifier = (): string => {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     const verifier = Array.from(array)
@@ -95,7 +125,7 @@ export function Builder() {
     return verifier;
   };
 
-  const generateCodeChallenge = (verifier: string) => {
+  const generateCodeChallenge = (verifier: string): string => {
     const hashed = CryptoJS.SHA256(verifier);
     const base64 = CryptoJS.enc.Base64.stringify(hashed);
     return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -144,11 +174,7 @@ export function Builder() {
               setGithubUser(userResponse.data.login);
               window.history.replaceState({}, document.title, window.location.pathname);
               setCodeVerifier(null);
-              if (prompt) {
-                navigate('/builder', { state: { prompt }, replace: true });
-              } else {
-                navigate('/', { replace: true });
-              }
+              navigate(prompt ? '/builder' : '/', { state: { prompt }, replace: true });
             });
           } else {
             console.error('Error retrieving access token:', data);
@@ -263,6 +289,50 @@ export function Builder() {
     }
   };
 
+  const handleNetlifyDeploy = async () => {
+    if (!webcontainer) {
+      setLlmMessages(prev => [...prev, { role: "assistant", content: "WebContainer is not initialized." }]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Check if dependencies are installed; if not, trigger npm install
+      if (!isDependenciesInstalled) {
+        setLlmMessages(prev => [...prev, { role: "assistant", content: "Installing dependencies..." }]);
+        const installProcess = await webcontainer.spawn('npm', ['install']);
+        const installExitCode = await installProcess.exit;
+        if (installExitCode !== 0) {
+          setLlmMessages(prev => [...prev, { role: "assistant", content: "Failed to install dependencies." }]);
+          return;
+        }
+        setIsDependenciesInstalled(true);
+      }
+
+      // Run netlify deploy
+      setLlmMessages(prev => [...prev, { role: "user", content: "Terminal command: netlify deploy --prod" }]);
+      const deployProcess = await webcontainer.spawn('npx', ['netlify', 'deploy', '--prod']);
+      deployProcess.output.pipeTo(
+        new WritableStream({
+          write(data) {
+            setLlmMessages(prev => [...prev, { role: "assistant", content: data }]);
+          }
+        })
+      );
+      const deployExitCode = await deployProcess.exit;
+      if (deployExitCode === 0) {
+        setLlmMessages(prev => [...prev, { role: "assistant", content: "Netlify deploy completed successfully." }]);
+      } else {
+        setLlmMessages(prev => [...prev, { role: "assistant", content: `Netlify deploy failed with exit code ${deployExitCode}.` }]);
+      }
+    } catch (error) {
+      console.error('Error deploying to Netlify:', error);
+      setLlmMessages(prev => [...prev, { role: "assistant", content: "Error deploying to Netlify." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let originalFiles = [...files];
     let updateHappened = false;
@@ -316,7 +386,7 @@ export function Builder() {
         status: "completed"
       })));
     }
-  }, [steps, files]);
+  }, [steps, files, setFiles, setSteps]);
 
   useEffect(() => {
     const createMountStructure = (files: FileItem[]): Record<string, any> => {
@@ -360,7 +430,7 @@ export function Builder() {
     if (!prompt) return;
     try {
       const response = await axios.post(`${BACKEND_URL}/template`, {
-        prompt: prompt.trim()
+        prompt
       });
       setTemplateSet(true);
 
@@ -485,6 +555,14 @@ export function Builder() {
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg shadow-blue-500/40 hover:shadow-purple-600/50 transition-all animate-pulse-glow"
             >
               Export as ZIP
+            </motion.button>
+            <motion.button
+              onClick={handleNetlifyDeploy}
+              whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(96, 165, 250, 0.8)' }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium shadow-lg shadow-green-500/40 hover:shadow-teal-600/50 transition-all animate-pulse-glow"
+            >
+              Deploy to Netlify
             </motion.button>
           </div>
         </div>
@@ -678,7 +756,7 @@ export function Builder() {
               className="col-span-1 space-y-6"
               variants={itemVariants}
             >
-              <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] overflow-hidden flex flex-col shadow-lg shadow-blue-500/30">
+              <div className="bg-gray-900/60 backdrop-blur-2xl rounded-xl p-4 border border-blue-500/40 h-[calc(100vh-8rem)] overflow-hidden flex flex-col shadow-lg shadow-blue500/30">
                 <div className="flex-1 overflow-y-auto pr-2">
                   <StepsList
                     steps={steps}

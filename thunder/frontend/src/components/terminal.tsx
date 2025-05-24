@@ -1,4 +1,3 @@
-// Terminal.tsx
 import { useEffect, useState, useRef } from 'react';
 import { WebContainer } from '@webcontainer/api';
 import axios from 'axios';
@@ -6,7 +5,7 @@ import { FileItem } from '../types';
 import { BACKEND_URL } from '../config';
 
 interface TerminalProps {
-  webContainer: WebContainer | null; // Updated to match useWebContainer
+  webContainer: WebContainer | null;
   onCommand: (command: string) => void;
   files?: FileItem[];
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
@@ -14,8 +13,8 @@ interface TerminalProps {
   githubToken: string | null;
   githubUser: string | null;
   deployToGitHub: (repoName: string) => Promise<void>;
-  isWebContainerLoading: boolean; // Added for retry feedback
-  webContainerError: Error | null; // Added for error feedback
+  isWebContainerLoading: boolean;
+  webContainerError: Error | null;
 }
 
 export const Terminal: React.FC<TerminalProps> = ({
@@ -79,6 +78,26 @@ export const Terminal: React.FC<TerminalProps> = ({
           setError(errorMsg);
         } else {
           setOutput((prev) => [...prev, 'Project initialized with bolt.new']);
+        }
+      } else if (commandName === 'netlify') {
+        setOutput((prev) => [...prev, 'Executing Netlify deploy...']);
+        const process = await webContainer.spawn('netlify', commandArgs);
+        let deployOutput = '';
+        process.output.pipeTo(
+          new WritableStream({
+            write(chunk) {
+              deployOutput += chunk;
+              setOutput((prev) => [...prev, chunk]);
+            },
+          })
+        );
+        const exitCode = await process.exit;
+        if (exitCode !== 0) {
+          const errorMsg = `Netlify deploy failed with exit code ${exitCode}: ${deployOutput}`;
+          setOutput((prev) => [...prev, errorMsg]);
+          setError(errorMsg);
+        } else {
+          setOutput((prev) => [...prev, 'Successfully deployed to Netlify']);
         }
       } else {
         const process = await webContainer.spawn(commandName, commandArgs);
@@ -162,6 +181,9 @@ export const Terminal: React.FC<TerminalProps> = ({
             preview: 'vite preview',
           },
           dependencies: {},
+          devDependencies: {
+            'netlify-cli': 'latest'
+          }
         };
         await webContainer.fs.writeFile('package.json', JSON.stringify(minimalPackageJson, null, 2));
         setFiles((prev) => [
@@ -318,14 +340,14 @@ export const Terminal: React.FC<TerminalProps> = ({
             type="text"
             value={command}
             onChange={(e) => setCommand(e.target.value)}
-            placeholder="Enter command (e.g., pnpm install, deploy [repo-name])"
+            placeholder="Enter command (e.g., pnpm install, netlify deploy --prod)"
             className="flex-1 bg-gray-800/50 border border-blue-500/40 rounded-l-lg p-2 text-xs sm:text-sm text-blue-100 placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-            disabled={isWebContainerLoading} // Disable input during loading
+            disabled={isWebContainerLoading}
           />
           <button
             type="submit"
             className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-r-lg text-xs sm:text-sm font-medium"
-            disabled={isWebContainerLoading} // Disable button during loading
+            disabled={isWebContainerLoading}
           >
             Run
           </button>
