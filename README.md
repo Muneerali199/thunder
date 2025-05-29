@@ -62,11 +62,18 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
    ```bash
    git clone https://github.com/Muneerali199/website-builder.git
    cd website-builder
+   cd thunder
    ```
 
-2. **Install dependencies**:
+2. **Install dependencies for frontend**:
    ```bash
-   npm install
+   cd frontend
+   npm install & npm install -force
+   ```
+2. **Install dependencies for frontend**:
+   ```bash
+   cd be
+   npm install 
    ```
 
 3. **Configure environment**:
@@ -141,7 +148,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 ## 💬 Support
 
 For help or feature requests:
-- 📧 Email: [your-email@domain.com]
+- 📧 Email: [alimuneerali245@gmail.com.com]
 - 🐞 Open an [Issue](https://github.com/Muneerali199/website-builder/issues)
 - 💬 Join our [Discord Community](#) *(link to be added)*
 
