@@ -141,7 +141,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 ## 💬 Support
 
 For help or feature requests:
-- 📧 Email: [your-email@domain.com]
+- 📧 Email: [alimuneerali245@gmail.com.com]
 - 🐞 Open an [Issue](https://github.com/Muneerali199/website-builder/issues)
 - 💬 Join our [Discord Community](#) *(link to be added)*
 
