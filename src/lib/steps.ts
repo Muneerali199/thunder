@@ -27,3 +27,4 @@ export function parseXml(response: string): Step[] {
   
     // Regular expression to find boltAction elements
     const actionRegex = /
+}
