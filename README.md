@@ -11,20 +11,20 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 ---
 
 ## 🌟 Table of Contents 📚
-- [Features](#features-)
-- [Tech Stack](#tech-stack-)
-- [Installation](#installation-)
-- [Environment Setup](#environment-setup-)
-- [Database Setup](#database-setup-)
-- [Usage](#usage-)
-- [Migration from Vite + Clerk](#migration-notes-)
-- [Contributing](#contributing-)
-- [License](#license-)
-- [Support](#support-)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Installation](#installation)
+- [Environment Setup](#environment-setup)
+- [Database Setup](#database-setup)
+- [Usage](#usage)
+- [Migration Notes](#migration-notes)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
 
 ---
 
-## ✨ Features
+<h2 id="features">✨ Features</h2>
 
 ### 🚀 Core Functionality
 - 🖱️ **Drag-and-Drop Builder** - Intuitive visual editor for seamless website creation
@@ -46,7 +46,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ---
 
-## 💻 Tech Stack
+<h2 id="tech-stack">💻 Tech Stack</h2> 
 
 | 💡 Category       | 🔧 Technologies                          |
 |-------------------|------------------------------------------|
@@ -59,7 +59,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ---
 
-## 🛠️ Installation
+<h2 id="installation">🛠️ Installation</h2>
 
 ### Prerequisites
 - **Node.js** v18+ installed on your system
