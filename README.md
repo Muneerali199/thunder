@@ -70,8 +70,8 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/Muneerali199/website-builder.git
-   cd website-builder
+   git clone https://github.com/Muneerali199/thunder.git
+   cd thunder
    ```
 
 2. **Install dependencies**:
