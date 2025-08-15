@@ -101,7 +101,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ---
 
-## 🔧 Environment Setup
+<h2 id="environment-setup">🔧 Environment Setup</h2>
 
 Create a `.env.local` file in the root directory with the following variables:
 
@@ -131,7 +131,7 @@ NEXT_PUBLIC_GA_ID=G-EQFZKPZ5MB
 
 ---
 
-## 🗄️ Database Setup
+<h2 id="database-setup">🗄️ Database Setup</h2>
 
 ### Using Supabase Dashboard
 
@@ -158,7 +158,7 @@ supabase db push
 
 ---
 
-## 🚀 Usage
+<h2 id="usage">🚀 Usage</h2>
 
 ### Development Mode
 ```bash
@@ -178,7 +178,7 @@ npm run lint
 
 ---
 
-## 📝 Migration Notes
+<h2 id="migration-notes">📝 Migration Notes</h2>
 
 This version has been migrated from:
 - **Vite** → **Next.js 14** (App Router)
@@ -194,7 +194,7 @@ This version has been migrated from:
 
 ---
 
-## 🤝 Contributing
+<h2 id="contributing">🤝 Contributing</h2>
 
 We welcome contributions! To get started:
 
@@ -221,13 +221,13 @@ We welcome contributions! To get started:
 
 ---
 
-## 📜 License
+<h2 id="license">📜 License</h2>
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ---
 
-## 💬 Support
+<h2 id="support">💬 Support</h2>
 
 For help or feature requests:
 - 📧 Email: [alimuneerali245@gmail.com](mailto:alimuneerali245@gmail.com)
