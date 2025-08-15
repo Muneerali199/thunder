@@ -21,6 +21,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 - [Contributing](#contributing)
 - [License](#license)
 - [Support](#support)
+- [Links](#Links)
 
 ---
 
@@ -236,7 +237,7 @@ For help or feature requests:
 
 ---
 
-## 🔗 Links
+<h2 id="Links">💬 Links</h2>
 
 - **Live Demo**: [thunder-muneer.vercel.app](https://thunder-muneer.vercel.app)
 - **Documentation**: [thunder-docs.vercel.app](https://thunder-docs.vercel.app/)
