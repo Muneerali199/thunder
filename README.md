@@ -1,160 +1,193 @@
-# Thunder  ⚡️
+# Thunder ⚡️  
+*A modern drag‑and‑drop website builder*  
 
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Live Demo](https://img.shields.io/website?down_color=red&down_message=Offline&label=Demo&up_color=blue&up_message=Live&url=https%3A%2F%2Fthunder-muneer.vercel.app)](https://thunder-muneer.vercel.app)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Maintained](https://img.shields.io/badge/Maintained%3F-Yes-brightgreen.svg)
-![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-orange)
-
-A modern, intuitive **website builder** with drag-and-drop functionality, empowering users to create professional websites in minutes.
-
-![Thunder Muneer Interface](https://raw.githubusercontent.com/Muneerali199/website-builder/main/public/assets/sc.png)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)  
+[![Live Demo](https://img.shields.io/website?down_color=red&down_message=Offline&label=Demo&up_color=blue&up_message=Live&url=https%3A%2F%2Fthunder-muneer.vercel.app)](https://thunder-muneer.vercel.app)  
+![Version](https://img.shields.io/badge/version-1.0.0-blue)  
+![Maintained](https://img.shields.io/badge/Maintained%3F-Yes-brightgreen.svg)  
+![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-orange)  
 
 ---
 
-## 🌟 Table of Contents 📚
-- [Features](#features-)
-- [Tech Stack](#tech-stack-)
-- [Installation](#installation-)
-- [Usage](#usage-)
-- [Contributing](#contributing-)
-- [License](#license-)
-- [Support](#support-)
+## 🖼️ Overview  
+
+**Thunder** is a modern, intuitive **website builder** with drag‑and‑drop functionality, empowering users to create professional websites in minutes.  
+
+![Thunder Muneer Interface](https://raw.githubusercontent.com/Muneerali199/website-builder/main/public/assets/sc.png)  
 
 ---
 
-## ✨ Features
+## 🌟 Table of Contents 📚  
 
-### 🚀 Core Functionality
-- 🖱️ **Drag-and-Drop Builder** - Intuitive visual editor for seamless website creation.
-- 🎨 **Template Gallery** - Choose from 50+ responsive templates tailored for various industries.
-- 📱 **Cross-Device Preview** - Real-time simulation across devices.
-- 🌈 **Style Customizer** - Extensive support for CSS and theme variables.
-
-### 🔧 Advanced Features
-- 🌍 **One-Click Deployment** - Publish your site to a custom domain effortlessly.
-- 🤝 **Team Collaboration** - Co-edit with your team in real time.
-- 🕒 **Version History** - Rollback to any previous version with ease.
-- 📊 **Analytics Integration** - Monitor traffic and performance directly from the builder.
+- [Features](#-features)  
+- [Tech Stack](#-tech-stack)  
+- [Project Structure](#-project-structure)  
+- [Installation](#️-installation)  
+- [Usage](#-usage)  
+- [Contributing](#-contributing)  
+- [License](#-license)  
+- [Support](#-support)  
 
 ---
 
-## 💻 Tech Stack
+## ✨ Features  
 
-| 💡 Category       | 🔧 Technologies                          |
-|-------------------|------------------------------------------|
-| **Frontend**      | React, Next.js, TypeScript, Tailwind CSS |
-| **Backend**       | Node.js, Express, Socket.IO             |
-| **Database**      | MongoDB, Redis                          |
-| **Deployment**    | Vercel, Render                          |
-| **Testing**       | Jest, Cypress, postman                  |
+### 🚀 Core Functionality  
+- 🖱️ **Drag-and-Drop Builder** – Intuitive editor for seamless site creation.  
+- 🎨 **Template Gallery** – Choose from 50+ responsive templates.  
+- 📱 **Cross-Device Preview** – Real-time previews for desktop, tablet, and mobile.  
+- 🌈 **Style Customizer** – Full CSS & theme variable support.  
 
----
-
-## 🛠️ Installation
-
-### Prerequisites
-- **Node.js** v18+ installed on your system.
-- **Vercel CLI** (optional, for deployment).
-
-### Quick Start Guide
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/Muneerali199/website-builder.git
-   cd website-builder
-   cd thunder
-   ```
-
-2. **Install dependencies for frontend**:
-   ```bash
-   cd frontend
-   npm install & npm install -force
-   ```
-2. **Install dependencies for frontend**:
-   ```bash
-   cd be
-   npm install 
-   ```
-
-3. **Configure environment**:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-4. **Start the development server**:
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) to access the builder!
+### 🔧 Advanced Features  
+- 🌍 **One-Click Deployment** – Deploy to a custom domain instantly.  
+- 🤝 **Team Collaboration** – Real-time co-editing for teams.  
+- 🕒 **Version History** – Roll back changes at any time.  
+- 📊 **Integrated Analytics** – Track performance within the builder.  
 
 ---
 
-## 🚀 Usage
+## 💻 Tech Stack  
 
-### Create a New Project
-```bash
-npm run create:project
-```
+| Category           | Technologies                          |  
+|--------------------|---------------------------------------|  
+| **Frontend**       | React + Vite, TypeScript, TailwindCSS |  
+| **Backend**        | Node.js, Express, Socket.IO           |  
+| **Authentication** | Clerk                                 |  
+| **Deployment**     | Vercel, Render                        |  
+| **Testing**        | Jest, Cypress, Postman                |  
 
-### Development Mode
-```bash
+---
+
+## 📂 Project Structure  
+
+thunder/
+│── be/ # Backend services
+│ ├── src/ # API & WebSocket server code
+│ └── package.json
+│
+│── frontend/ # Frontend (React + Vite)
+│ ├── public/ # Static assets
+│ ├── src/ # Components, pages, hooks, utils
+│ │ ├── components/
+│ │ ├── pages/
+│ │ ├── hooks/
+│ │ └── utils/
+│ └── package.json
+│
+│── public/ # Screenshots, logos, assets
+│── .env.example # Example environment variables
+│── LICENSE
+│── README.md
+└── package.json
+
+text
+
+---
+
+## 🛠️ Installation  
+
+### Prerequisites  
+- **Node.js** v18+  
+- **npm** or **yarn**  
+- **Vercel CLI** *(optional for deployment)*  
+
+### Quick Setup  
+
+1. **Clone the repo**  
+git clone https://github.com/Muneerali199/thunder.git
+cd thunder
+
+text
+
+2. **Install backend dependencies**  
+cd be
+npm install
+
+text
+
+3. **Install frontend dependencies**  
+cd ../frontend
+npm install
+
+text
+
+4. **Configure environment**  
+cp .env.example .env.local
+
+text
+
+5. **Run in development mode**  
 npm run dev
-```
 
-### Production Build
-```bash
+text
+Open **[http://localhost:3000](http://localhost:3000)**  
+
+---
+
+## 🚀 Usage  
+
+### Create a New Project  
+npm run create:project
+
+text
+
+### Development Mode  
+npm run dev
+
+text
+
+### Production Build  
 npm run build && npm start
-```
+
+text
 
 ---
 
-## 🤝 Contributing
+## 🤝 Contributing  
 
-We welcome contributions! To get started:
+We ❤️ contributions!  
 
-1. **Fork the repository**:
-   ```bash
-   git clone https://github.com/Muneerali199/website-builder.git
-   ```
+1. **Fork & Clone**  
+git clone https://github.com/Muneerali199/thunder.git
 
-2. **Create a feature branch**:
-   ```bash
-   git checkout -b feature/AmazingFeature
-   ```
+text
 
-3. **Commit your changes**:
-   ```bash
-   git commit -m 'Add AmazingFeature'
-   ```
+2. **Create a feature branch**  
+git checkout -b feature/AmazingFeature
 
-4. **Push to your branch**:
-   ```bash
-   git push origin feature/AmazingFeature
-   ```
+text
 
-5. **Open a Pull Request**.
+3. **Commit changes**  
+git commit -m "Add AmazingFeature"
 
-### Contribution Guidelines
-For detailed steps, see our [Contribution Guidelines](CONTRIBUTING.md).
+text
+
+4. **Push branch & Open PR**  
+git push origin feature/AmazingFeature
+
+text
+
+📌 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.  
 
 ---
 
-## 📜 License
+## 📜 License  
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
-
----
-
-## 💬 Support
-
-For help or feature requests:
-- 📧 Email: [alimuneerali245@gmail.com.com]
-- 🐞 Open an [Issue](https://github.com/Muneerali199/website-builder/issues)
-- 💬 Join our [Discord Community](#) *(link to be added)*
+This project is distributed under the **MIT License**.  
+See [LICENSE](LICENSE) for details.  
 
 ---
 
-Crafted with ❤️ by **Muneer Ali**
+## 💬 Support  
 
-Explore the docs: [Documentation](#) *(link to be added)*  
-Report Bug: [Issues](https://github.com/Muneerali199/website-builder/issues)  
+For help, suggestions, or issues:  
+- 📧 Email: **alimuneerali245@gmail.com**  
+- 🐞 [Open an Issue](https://github.com/Muneerali199/thunder/issues)  
+- 💬 Join our *Discord* (coming soon 🚀)  
+
+---
+
+👨‍💻 Crafted with ❤️ by **Muneer Ali**  
+
+📖 Docs: thunder-docs.vercel.app
+🐞 Report Bug: [Issues](https://github.com/Muneerali199/thunder/issues)  
