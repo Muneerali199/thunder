@@ -11,20 +11,22 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 ---
 
 ## 🌟 Table of Contents 📚
-- [Features](#features-)
-- [Tech Stack](#tech-stack-)
-- [Installation](#installation-)
-- [Environment Setup](#environment-setup-)
-- [Database Setup](#database-setup-)
-- [Usage](#usage-)
-- [Migration from Vite + Clerk](#migration-notes-)
-- [Contributing](#contributing-)
-- [License](#license-)
-- [Support](#support-)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Installation](#installation)
+- [Environment Setup](#environment-setup)
+- [Database Setup](#database-setup)
+- [Usage](#usage)
+- [Migration Notes](#migration-notes)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
+- [Links](#Links)
 
 ---
 
-## ✨ Features
+
+<h2 id="features">✨ Features</h2>
 
 ### 🚀 Core Functionality
 - 🖱️ **Drag-and-Drop Builder** - Intuitive visual editor for seamless website creation
@@ -46,7 +48,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ---
 
-## 💻 Tech Stack
+<h2 id="tech-stack">💻 Tech Stack</h2> 
 
 | 💡 Category       | 🔧 Technologies                          |
 |-------------------|------------------------------------------|
@@ -59,7 +61,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ---
 
-## 🛠️ Installation
+<h2 id="installation">🛠️ Installation</h2>
 
 ### Prerequisites
 - **Node.js** v18+ installed on your system
@@ -70,8 +72,8 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/Muneerali199/website-builder.git
-   cd website-builder
+   git clone https://github.com/Muneerali199/thunder.git
+   cd thunder
    ```
 
 2. **Install dependencies**:
@@ -100,7 +102,7 @@ A modern, intuitive **website builder** with drag-and-drop functionality, empowe
 
 ---
 
-## 🔧 Environment Setup
+<h2 id="environment-setup">🔧 Environment Setup</h2>
 
 Create a `.env.local` file in the root directory with the following variables:
 
@@ -130,7 +132,7 @@ NEXT_PUBLIC_GA_ID=G-EQFZKPZ5MB
 
 ---
 
-## 🗄️ Database Setup
+<h2 id="database-setup">🗄️ Database Setup</h2>
 
 ### Using Supabase Dashboard
 
@@ -157,7 +159,7 @@ supabase db push
 
 ---
 
-## 🚀 Usage
+<h2 id="usage">🚀 Usage</h2>
 
 ### Development Mode
 ```bash
@@ -177,7 +179,7 @@ npm run lint
 
 ---
 
-## 📝 Migration Notes
+<h2 id="migration-notes">📝 Migration Notes</h2>
 
 This version has been migrated from:
 - **Vite** → **Next.js 14** (App Router)
@@ -193,7 +195,7 @@ This version has been migrated from:
 
 ---
 
-## 🤝 Contributing
+<h2 id="contributing">🤝 Contributing</h2>
 
 We welcome contributions! To get started:
 
@@ -220,13 +222,13 @@ We welcome contributions! To get started:
 
 ---
 
-## 📜 License
+<h2 id="license">📜 License</h2>
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ---
 
-## 💬 Support
+<h2 id="support">💬 Support</h2>
 
 For help or feature requests:
 - 📧 Email: [alimuneerali245@gmail.com](mailto:alimuneerali245@gmail.com)
@@ -235,7 +237,7 @@ For help or feature requests:
 
 ---
 
-## 🔗 Links
+<h2 id="Links">💬 Links</h2>
 
 - **Live Demo**: [thunder-muneer.vercel.app](https://thunder-muneer.vercel.app)
 - **Documentation**: [thunder-docs.vercel.app](https://thunder-docs.vercel.app/)
