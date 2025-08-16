@@ -129,7 +129,7 @@ export default function Pricing() {
                 <button
                   onClick={() => {
                     if (tier.name !== 'Free') {
-                      router.push('/checkout')
+                      router.push(`/checkout?plan=${tier.name}`)
                     }
                   }}
                   className={`w-full py-3 rounded-lg font-bold transition-all ${
