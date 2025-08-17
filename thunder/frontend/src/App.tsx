@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { Builder } from './pages/Builder';
 import { Pricing } from './components/Pricing';
-import { Checkout } from './components/checkout';
+import Checkout from './components/checkout';
 import { ClerkProvider } from '@clerk/clerk-react';
 
 // Declare gtag to avoid TS errors
@@ -35,7 +35,9 @@ function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/builder" element={<Builder />} />
       <Route path="/pricing" element={<Pricing />} />
-      <Route path="/checkout" element={<Checkout />} />
+      {/* ✅ Dynamic checkout route */}
+      <Route path="/checkout/:billing/:planId" element={<Checkout />} />
+
       <Route path="/github-callback" element={<Builder />} />
     </Routes>
   );

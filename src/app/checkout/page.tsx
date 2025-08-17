@@ -1,66 +1,72 @@
-'use client'
+import React from "react";
 
-import { motion } from 'framer-motion'
-import { useSearchParams } from 'next/navigation'
-
-const plans = {
-  Free: {
-    name: 'Free',
-    price: 0,
-    features: ['Basic usage for exploratory use', 'Public projects only', 'Community support'],
-  },
-  Pro: {
-    name: 'Pro',
-    price: 20,
-    features: ['10 million tokens per month', 'Private projects', 'Standard support'],
-  },
-  'Pro 50': {
-    name: 'Pro 50',
-    price: 50,
-    features: ['26 million tokens per month', '25M additional tokens', 'Priority support'],
-  },
-  'Pro 100': {
-    name: 'Pro 100',
-    price: 100,
-    features: ['55 million tokens per month', '50M additional tokens', 'Priority support'],
-  },
-}
-
-export default function Checkout() {
-  const searchParams = useSearchParams()
-  const planName = searchParams.get('plan') || 'Pro'
-  const plan = plans[planName as keyof typeof plans]
-
+const Checkout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <motion.div 
-        className="bg-gray-900/50 backdrop-blur-lg p-8 rounded-3xl max-w-md w-full"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h2 className="text-2xl font-bold text-cyan-400 mb-6">
-          Checkout – {plan.name}
-        </h2>
-        
-        <div className="space-y-4">
-          <div className="bg-gray-800/50 p-4 rounded-lg">
-            <h3 className="text-white font-semibold mb-2">Plan Features</h3>
-            <ul className="text-gray-300 space-y-2">
-              {plan.features.map((feature, i) => (
-                <li key={i}>✓ {feature}</li>
-              ))}
-            </ul>
+    <div className="flex items-center justify-center min-h-screen bg-black text-white px-6">
+      <div className="w-full max-w-lg bg-neutral-900 border border-neutral-800 rounded-2xl shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-center mb-6">Checkout</h1>
+
+        {/* Order Summary */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-3">Order Summary</h2>
+          <div className="flex justify-between text-neutral-300 mb-2">
+            <span>Pro Plan</span>
+            <span>$12</span>
           </div>
-          
-          <button className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-500 transition-all">
-            Subscribe Now – ${plan.price}/month
-          </button>
-          
-          <p className="text-gray-400 text-sm mt-4">
-            Secure payment processing powered by Stripe
-          </p>
+          <div className="flex justify-between text-neutral-300 mb-2">
+            <span>Taxes</span>
+            <span>$0</span>
+          </div>
+          <div className="flex justify-between font-bold text-white text-lg">
+            <span>Total</span>
+            <span>$12</span>
+          </div>
         </div>
-      </motion.div>
+
+        {/* Payment Form */}
+        <form className="space-y-4">
+          <div>
+            <label className="block text-neutral-300 text-sm mb-1">
+              Card Number
+            </label>
+            <input
+              type="text"
+              placeholder="1234 5678 9012 3456"
+              className="w-full px-4 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-neutral-300 text-sm mb-1">
+                Expiry
+              </label>
+              <input
+                type="text"
+                placeholder="MM/YY"
+                className="w-full px-4 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-300 text-sm mb-1">
+                CVV
+              </label>
+              <input
+                type="text"
+                placeholder="123"
+                className="w-full px-4 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            className="w-full mt-4 bg-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-purple-500 transition"
+          >
+            Pay $12
+          </button>
+        </form>
+      </div>
     </div>
-  )
-}
+  );
+};
+
+export default Checkout;

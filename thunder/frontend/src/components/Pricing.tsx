@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate  } from 'react-router-dom';
 import { useState } from 'react';
 
 interface PricingTier {
@@ -402,18 +402,22 @@ export function Pricing() {
 
                 <button
                   onClick={() => {
-                    if (tier.name !== 'Free') {
-                      navigate('/checkout');
-                    }
-                  }}
-                  className={`w-full py-3 rounded-lg font-bold transition-all ${
-                    tier.name === 'Free' 
-                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-black hover:bg-gray-200'
-                  }`}
-                >
-                  {tier.button}
-                </button>
+    if (tier.name !== 'Free') {
+      const planId = tier.name.toLowerCase().replace(/\s+/g, '-');
+      navigate(`/checkout/${billingCycle}/${planId}`, {
+        state: { showTeams, billingCycle }, // store state for going back
+      });
+    }
+  }}
+  className={`w-full py-3 rounded-lg font-bold transition-all ${
+    tier.name === 'Free'
+      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+      : 'bg-white text-black hover:bg-gray-200'
+  }`}
+>
+  {tier.button}
+</button>
+
               </div>
             </motion.div>
           ))}
@@ -446,7 +450,7 @@ export function Pricing() {
           </div>
           
           <div className="text-center mt-12 text-gray-400">
-            <p>For additional information, please visit our <a href="https://thunder-docs.vercel.app/" className="text-cyan-400 hover:underline">Help Center</a>.</p>
+            <p>For additional information, please visit our <a href="#" className="text-cyan-400 hover:underline">Help Center</a>.</p>
           </div>
         </div>
       </div>
