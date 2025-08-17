@@ -417,7 +417,6 @@ export function Pricing() {
 >
   {tier.button}
 </button>
-
               </div>
             </motion.div>
           ))}
@@ -450,7 +449,7 @@ export function Pricing() {
           </div>
           
           <div className="text-center mt-12 text-gray-400">
-            <p>For additional information, please visit our <a href="https://thunder-docs.vercel.app/" className="text-cyan-400 hover:underline">Help Center</a>.</p>
+            <p>For additional information, please visit our <a href="#" className="text-cyan-400 hover:underline">Help Center</a>.</p>
           </div>
         </div>
       </div>
