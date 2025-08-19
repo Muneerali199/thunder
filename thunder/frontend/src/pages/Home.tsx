@@ -7,6 +7,8 @@ import { Home as HomeIcon, Plus, DollarSign, Eye, Gift, HelpCircle, Settings as 
 import { useMediaQuery } from 'react-responsive';
 import { Lightning } from '../components/lightning';
 import { Settings } from '../components/setting';
+import { createOrGetProject, getUserProjects, getUserChats, migrateLocalStorageToServer } from '../api/projects';
+import type { Project, Chat } from '../api/projects';
 
 // SVG Logo Component with Lightning Colors
 const ThunderLogoSVG = () => (
@@ -39,13 +41,14 @@ interface UserMetadata {
   proReferrals?: number;
 }
 
-interface Project {
+// For backwards compatibility - legacy Project and Chat interfaces
+interface LegacyProject {
   id: string;
   prompt: string;
   createdAt: string;
 }
 
-interface Chat {
+interface LegacyChat {
   id: string;
   message: string;
   createdAt: string;
@@ -53,6 +56,7 @@ interface Chat {
 
 export function Home() {
   const [prompt, setPrompt] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSignedIn, userId } = useAuth();
@@ -84,22 +88,61 @@ export function Home() {
   // Generate referral link
   const referralLink = userId ? `https://thunder-muneer.vercel.app/?ref=${userId}` : '';
 
-  const loadProjects = () => {
+  const loadProjects = async () => {
+    if (isSignedIn && userId) {
+      try {
+        const serverProjects = await getUserProjects(userId);
+        setProjects(serverProjects);
+        return;
+      } catch (error) {
+        console.error('Error loading projects from server:', error);
+      }
+    }
+    
+    // Fallback to localStorage
     try {
       const storedProjects = localStorage.getItem('projects');
       if (storedProjects) {
-        setProjects(JSON.parse(storedProjects));
+        const localProjects = JSON.parse(storedProjects);
+        // Convert legacy format to new format for display
+        const convertedProjects = localProjects.map((p: any) => ({
+          ...p,
+          user_id: userId || 'local',
+          prompt_hash: '',
+          created_at: p.createdAt || new Date().toISOString(),
+          updated_at: p.createdAt || new Date().toISOString()
+        }));
+        setProjects(convertedProjects);
       }
     } catch (error) {
       console.error('Error loading projects:', error);
     }
   };
 
-  const loadChats = () => {
+  const loadChats = async () => {
+    if (isSignedIn && userId) {
+      try {
+        const serverChats = await getUserChats(userId);
+        setChats(serverChats);
+        return;
+      } catch (error) {
+        console.error('Error loading chats from server:', error);
+      }
+    }
+    
+    // Fallback to localStorage
     try {
       const storedChats = localStorage.getItem('chats');
       if (storedChats) {
-        setChats(JSON.parse(storedChats));
+        const localChats = JSON.parse(storedChats);
+        // Convert legacy format to new format for display
+        const convertedChats = localChats.map((c: any) => ({
+          ...c,
+          user_id: userId || 'local',
+          project_id: null,
+          created_at: c.createdAt || new Date().toISOString()
+        }));
+        setChats(convertedChats);
       }
     } catch (error) {
       console.error('Error loading chats:', error);
@@ -127,6 +170,9 @@ export function Home() {
           freeReferrals: metadata.freeReferrals || 0,
           proReferrals: metadata.proReferrals || 0,
         });
+        
+        // Migrate localStorage data if it's the user's first server login
+        migrateLocalStorageToServer(userId!);
       } else {
         const localUsage = localStorage.getItem('usage');
         if (localUsage) {
@@ -156,6 +202,12 @@ export function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submission
+    if (isSubmitting) {
+      return;
+    }
+    
     if (!isSignedIn) {
       alert('Please sign in to submit prompts');
       return;
@@ -166,35 +218,44 @@ export function Home() {
       return;
     }
     if (prompt.trim()) {
-      const newUsage = { ...usage, remainingTokens: usage.remainingTokens - 1, dailyTokens: usage.dailyTokens + 1 };
-      const newProject: Project = {
-        id: crypto.randomUUID(),
-        prompt,
-        createdAt: new Date().toISOString(),
-      };
-      const updatedProjects = [newProject, ...projects];
+      setIsSubmitting(true);
+      
       try {
-        localStorage.setItem('projects', JSON.stringify(updatedProjects));
-        setProjects(updatedProjects);
-        const newChat: Chat = {
-          id: crypto.randomUUID(),
-          message: `Generated project: ${prompt}`,
-          createdAt: new Date().toISOString(),
+        const newUsage = { 
+          ...usage, 
+          remainingTokens: usage.remainingTokens - 1, 
+          dailyTokens: usage.dailyTokens + 1 
         };
-        const updatedChats = [newChat, ...chats];
-        localStorage.setItem('chats', JSON.stringify(updatedChats));
-        setChats(updatedChats);
+
+        // Use new API with server-side deduplication
+        const result = await createOrGetProject(userId!, prompt);
+        
+        if (result.isDuplicate) {
+          // Notify user about duplicate
+          alert(result.message + '. Redirecting to existing project.');
+        }
+
+        // Update projects list
+        await loadProjects();
+        await loadChats();
+        
+        // Update usage
         setUsage(newUsage);
         if (user) {
           await user.update({ unsafeMetadata: newUsage });
         } else {
           localStorage.setItem('usage', JSON.stringify(newUsage));
         }
+        
+        // Navigate to builder
         navigate('/builder', { state: { prompt } });
         setPrompt('');
+        
       } catch (error) {
-        console.error('Error saving data:', error);
-        alert('Failed to save project or chat.');
+        console.error('Error saving project:', error);
+        alert('Failed to save project. Please try again.');
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -410,10 +471,29 @@ export function Home() {
               setIsSettingsOpen={setIsSettingsOpen}
               usage={usage}
               setUsage={setUsage}
-              projects={projects}
-              setProjects={setProjects}
-              chats={chats}
-              setChats={setChats}
+              projects={projects.map(p => ({ id: p.id, prompt: p.prompt, createdAt: p.created_at }))}
+              setProjects={(legacyProjects) => {
+                // Convert legacy format back to new format
+                const newFormatProjects = legacyProjects.map(p => ({
+                  ...p,
+                  user_id: userId || 'local',
+                  prompt_hash: '',
+                  created_at: p.createdAt,
+                  updated_at: p.createdAt
+                }));
+                setProjects(newFormatProjects);
+              }}
+              chats={chats.map(c => ({ id: c.id, message: c.message, createdAt: c.created_at }))}
+              setChats={(legacyChats) => {
+                // Convert legacy format back to new format  
+                const newFormatChats = legacyChats.map(c => ({
+                  ...c,
+                  user_id: userId || 'local',
+                  project_id: null,
+                  created_at: c.createdAt
+                }));
+                setChats(newFormatChats);
+              }}
               user={user}
             />
           )}
@@ -613,11 +693,18 @@ export function Home() {
                 {prompt.trim() && (
                   <motion.button
                     onClick={handleSubmit}
-                    whileHover={{ scale: 1.15, boxShadow: '0 0 25px rgba(96, 165, 250, 0.8)' }}
-                    whileTap={{ scale: 0.9 }}
-                    className="absolute bottom-4 sm:bottom-8 right-4 sm:right-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg px-6 sm:px-8 py-2 sm:py-3 text-sm font-semibold shadow-lg shadow-purple-600/60 hover:shadow-purple-600/80 transition-all duration-500 animate-pulse-glow"
+                    disabled={isSubmitting}
+                    whileHover={!isSubmitting ? { scale: 1.15, boxShadow: '0 0 25px rgba(96, 165, 250, 0.8)' } : {}}
+                    whileTap={!isSubmitting ? { scale: 0.9 } : {}}
+                    className={`absolute bottom-4 sm:bottom-8 right-4 sm:right-6 bg-gradient-to-r ${
+                      isSubmitting 
+                        ? 'from-gray-500 to-gray-600 cursor-not-allowed' 
+                        : 'from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
+                    } text-white rounded-lg px-6 sm:px-8 py-2 sm:py-3 text-sm font-semibold shadow-lg shadow-purple-600/60 hover:shadow-purple-600/80 transition-all duration-500 ${
+                      isSubmitting ? '' : 'animate-pulse-glow'
+                    }`}
                   >
-                    Generate →
+                    {isSubmitting ? 'Creating...' : 'Generate →'}
                   </motion.button>
                 )}
               </div>
