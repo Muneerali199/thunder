@@ -4,12 +4,13 @@
       "module": "CommonJS",
       "outDir": "./dist",
       "rootDir": "./src",
-      "strict": true,
+      "strict": false,
       "esModuleInterop": true,
       "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true,
-      "moduleResolution": "node"
+      "resolveJsonModule": true,
+      "allowSyntheticDefaultImports": true,
+      "noImplicitAny": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"]
 }
