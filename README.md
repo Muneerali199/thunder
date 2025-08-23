@@ -59,7 +59,7 @@
 ---
 
 ## 📂 Project Structure  
-
+```
 thunder/
 │── be/ # Backend services
 │ ├── src/ # API & WebSocket server code
@@ -79,7 +79,7 @@ thunder/
 │── LICENSE
 │── README.md
 └── package.json
-
+```
 text
 
 ---
