@@ -16,6 +16,7 @@
         "@octokit/core": "^6.1.5",
         "@react-three/drei": "^9.122.0",
         "@react-three/fiber": "8.15.14",
+        "@supabase/supabase-js": "^2.56.0",
         "@types/xml2js": "^0.4.14",
         "@webcontainer/api": "^1.6.1",
         "axios": "^1.7.8",
