@@ -5,7 +5,8 @@ import { Builder } from './pages/Builder';
 import { Pricing } from './components/Pricing';
 import { Checkout } from './components/checkout';
 import Footer from './components/Footer';
-import { ClerkProvider } from '@clerk/clerk-react';
+import Auth from './pages/Auth';
+
 
 // Declare gtag to avoid TS errors
 declare global {
@@ -38,23 +39,24 @@ function AppRoutes() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/github-callback" element={<Builder />} />
+      <Route path="/auth" element={<Auth />} />
     </Routes>
+
   );
 }
 
 function App() {
   return (
-    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col">
-          <div className="flex-1">
-            <AppRoutes />
-          </div>
-          <Footer />
+    <BrowserRouter>
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1">
+          <AppRoutes />
         </div>
-      </BrowserRouter>
-    </ClerkProvider>
+        <Footer />
+      </div>
+    </BrowserRouter>
   );
 }
+
 
 export default App;

@@ -52,7 +52,8 @@
 |--------------------|---------------------------------------|  
 | **Frontend**       | React + Vite, TypeScript, TailwindCSS |  
 | **Backend**        | Node.js, Express, Socket.IO           |  
-| **Authentication** | Clerk                                 |  
+| **Authentication** | Supabase                              |  
+
 | **Deployment**     | Vercel, Render                        |  
 | **Testing**        | Jest, Cypress, Postman                |  
 
@@ -109,8 +110,14 @@ For detailed setup instructions, see our **[Development Setup Guide](DEVELOPMENT
 git clone https://github.com/subh37106/thunder.git
 
 cd thunder
+```
+
+2. **Set up Environment Variables**
+
+Create a `.env.local` file based on `.env.example` and add Supabase credentials provided by the maintainer.
 
 ## 📜 License  
+
 
 This project is distributed under the **MIT License**.  
 See [LICENSE](LICENSE) for details.  
@@ -129,4 +136,4 @@ For help, suggestions, or issues:
 👨‍💻 Crafted with ❤️ by **Muneer Ali**  
 
 📖 Docs: thunder-docs.vercel.app
-🐞 Report Bug: [Issues](https://github.com/Muneerali199/thunder/issues)  
+🐞 Report Bug: [Issues](https://github.com/Muneerali199/thunder/issues)
