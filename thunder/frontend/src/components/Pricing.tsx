@@ -366,7 +366,7 @@ export function Pricing() {
           </div>
         )}
 
-        <div className={`grid gap-6 mb-20 ${showTeams ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+        <div className={` grid gap-6 mb-20 ${showTeams ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
           {getCurrentTiers().map((tier, index) => (
             <motion.div
               key={`${tier.name}-${index}`}
@@ -375,7 +375,7 @@ export function Pricing() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
             >
-              <div className="bg-gray-900/90 backdrop-blur-lg p-6 rounded-2xl h-full flex flex-col">
+              <div className=" hover:scale-105 hover:duration-300 hover:shadow-2xl hover:shadow-cyan-500/40 bg-gray-900/90 backdrop-blur-lg p-6 rounded-2xl h-full flex flex-col">
                 <h2 className="text-2xl font-bold text-white mb-2">{tier.name}</h2>
                 <p className="text-gray-300 text-sm mb-4">{tier.description}</p>
                 
