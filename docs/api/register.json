@@ -1,0 +1,10 @@
+{
+  "user": {
+    "id": "u123",
+    "name": "Ada Lovelace",
+    "email": "ada@example.com"
+  },
+  "accessToken": "eyJhbGciOi...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600
+}

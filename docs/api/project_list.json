@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "id": "p_1",
+      "name": "My Project",
+      "description": "Optional"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
