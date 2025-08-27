@@ -9,24 +9,30 @@
 
 ---
 
+## 🌟 Table of Contents 📚  
+
+- [Overview](#overview)  
+- [Features](#features)  
+  - [Core Functionality](#core-functionality)  
+  - [Advanced Features](#advanced-features)  
+- [Tech Stack](#tech-stack)  
+- [Project Structure](#project-structure)  
+- [Installation](#installation)  
+  - [Quick Start](#quick-start)  
+  - [Prerequisites](#prerequisites)  
+  - [Setup](#setup)  
+- [Usage](#usage)  
+- [Contributing](#contributing)  
+- [License](#license)  
+- [Support](#support)  
+
+---
+
 ## 🖼️ Overview  
 
 **Thunder** is a modern, intuitive **website builder** with drag‑and‑drop functionality, empowering users to create professional websites in minutes.  
 
 ![Thunder Muneer Interface](https://raw.githubusercontent.com/Muneerali199/website-builder/main/public/assets/sc.png)  
-
----
-
-## 🌟 Table of Contents 📚  
-
-- [Features](#-features)  
-- [Tech Stack](#-tech-stack)  
-- [Project Structure](#-project-structure)  
-- [Installation](#️-installation)  
-- [Usage](#-usage)  
-- [Contributing](#-contributing)  
-- [License](#-license)  
-- [Support](#-support)  
 
 ---
 
@@ -59,6 +65,7 @@
 ---
 
 ## 📂 Project Structure  
+
 
 thunder/
 │── be/ # Backend services
@@ -107,8 +114,67 @@ For detailed setup instructions, see our **[Development Setup Guide](DEVELOPMENT
 ```bash
 
 git clone https://github.com/subh37106/thunder.git
-
 cd thunder
+npm install
+
+## 2. Frontend setup
+
+```bash
+
+cd frontend
+npm install
+npm run dev
+
+## 3. Backend setup (if needed)
+
+```bash
+
+cd be
+npm install
+npm run start
+
+
+## 📖 Usage
+Thunder makes it easy to create professional websites with no coding experience. Follow these steps to get started:
+
+Access the Builder: Visit thunder-muneer.vercel.app and sign in with Clerk authentication.
+Choose a Template: Select from 50+ responsive templates in the Template Gallery.
+Customize Your Site: Use the drag-and-drop editor to add components, adjust styles, and preview across devices.
+Deploy: Click the "Deploy" button to publish your site to a custom domain.
+Collaborate: Invite team members for real-time co-editing.
+Track Performance: Use integrated analytics to monitor site performance.
+
+For detailed guides, visit thunder-docs.vercel.app.
+
+
+## 🤝 Contributing
+We welcome contributions to Thunder! To contribute:
+
+Fork the Repository:
+
+```bash 
+git clone https://github.com/<your-username>/thunder.git
+
+
+
+Set Up Locally: Follow the Installation instructions.
+
+
+Create a Feature Branch:
+
+```bash
+
+git checkout -b feature/your-feature
+
+
+
+Make Changes: Follow coding standards (TypeScript, TailwindCSS, ESLint).
+Test: Run npm run test (Jest) and npm run cypress (Cypress) for code changes.
+Submit a Pull Request: Push your branch and create a PR with a clear description.
+Engage: Respond to feedback from maintainers.
+
+For questions, contact alimuneerali245@gmail.com or open an issue.
+
 
 ## 📜 License  
 
