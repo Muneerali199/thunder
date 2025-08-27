@@ -85,30 +85,91 @@ text
 ---
 
 ## 🛠️ Installation  
-### Quick Start
-
-For detailed setup instructions, see our **[Development Setup Guide](DEVELOPMENT_SETUP.md)**.
-
 
 ### Prerequisites  
-
-- **Node.js** v18.0.0+  
-
-- **npm** v8.0.0+  
-
-- **Git** (latest)  
-
+- **Node.js** v18+  
+- **npm** or **yarn**  
+- **Vercel CLI** *(optional for deployment)*  
 
 ### Quick Setup  
 
-
-1. **Clone and setup**  
-
-```bash
-
-git clone https://github.com/subh37106/thunder.git
-
+1. **Clone the repo**  
+git clone https://github.com/Muneerali199/thunder.git
 cd thunder
+
+text
+
+2. **Install backend dependencies**  
+cd be
+npm install
+
+text
+
+3. **Install frontend dependencies**  
+cd ../frontend
+npm install
+
+text
+
+4. **Configure environment**  
+cp .env.example .env.local
+
+text
+
+5. **Run in development mode**  
+npm run dev
+
+text
+Open **[http://localhost:3000](http://localhost:3000)**  
+
+---
+
+## 🚀 Usage  
+
+### Create a New Project  
+npm run create:project
+
+text
+
+### Development Mode  
+npm run dev
+
+text
+
+### Production Build  
+npm run build && npm start
+
+text
+
+---
+
+## 🤝 Contributing  
+
+We ❤️ contributions!  
+
+1. **Fork & Clone**  
+git clone https://github.com/Muneerali199/thunder.git
+
+text
+
+2. **Create a feature branch**  
+git checkout -b feature/AmazingFeature
+
+text
+
+3. **Commit changes**  
+git commit -m "Add AmazingFeature"
+
+text
+
+4. **Push branch & Open PR**  
+git push origin feature/AmazingFeature
+
+text
+
+📌 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.  
+
+---
 
 ## 📜 License  
 
