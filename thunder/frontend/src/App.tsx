@@ -4,6 +4,7 @@ import { Home } from './pages/Home';
 import { Builder } from './pages/Builder';
 import { Pricing } from './components/Pricing';
 import { Checkout } from './components/checkout';
+import Footer from './components/Footer';
 import { ClerkProvider } from '@clerk/clerk-react';
 
 // Declare gtag to avoid TS errors
@@ -45,7 +46,12 @@ function App() {
   return (
     <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
       <BrowserRouter>
-        <AppRoutes />
+        <div className="min-h-screen flex flex-col">
+          <div className="flex-1">
+            <AppRoutes />
+          </div>
+          <Footer />
+        </div>
       </BrowserRouter>
     </ClerkProvider>
   );
