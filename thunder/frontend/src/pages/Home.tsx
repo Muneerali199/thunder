@@ -1,32 +1,55 @@
-
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { UserButton, SignInButton, SignUpButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/clerk-react';
-import { Home as HomeIcon, Plus, DollarSign, Eye, Gift, HelpCircle, Settings as SettingsIcon, X } from 'lucide-react';
-import { useMediaQuery } from 'react-responsive';
-import { Lightning } from '../components/lightning';
-import { Settings } from '../components/setting';
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  UserButton,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  useAuth,
+  useUser,
+} from "@clerk/clerk-react";
+import {
+  Home as HomeIcon,
+  Plus,
+  DollarSign,
+  Eye,
+  Gift,
+  HelpCircle,
+  Settings as SettingsIcon,
+  X,
+} from "lucide-react";
+import { useMediaQuery } from "react-responsive";
+import { Lightning } from "../components/lightning";
+import { Settings } from "../components/setting";
 
 // SVG Logo Component with Lightning Colors
 const ThunderLogoSVG = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg
+    width="32"
+    height="32"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ transform: 'translateX(-6px)' }} // 👈 Shift left by 2px
+  >
     <path d="M13 2L3 14h9l-1 8l10-12h-9l1-8z" fill="url(#grad)" />
     <defs>
       <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style={{ stopColor: '#60A5FA', stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: '#C026D3', stopOpacity: 1 }} />
+        <stop offset="0%" style={{ stopColor: "#60A5FA", stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: "#C026D3", stopOpacity: 1 }} />
       </linearGradient>
     </defs>
   </svg>
 );
 
 interface UserMetadata {
-  tier: 'free' | 'pro' | 'enterprise';
+  tier: "free" | "pro" | "enterprise";
   remainingTokens: number;
   showTokenUsage: boolean;
   lineWrapping: boolean;
-  theme: 'dark' | 'light' | 'system';
+  theme: "dark" | "light" | "system";
   notifications: boolean;
   dailyTokens: number;
   extraTokens: number;
@@ -52,24 +75,24 @@ interface Chat {
 }
 
 export function Home() {
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isSignedIn, userId } = useAuth();
   const { user } = useUser();
   const [usage, setUsage] = useState<UserMetadata>({
-    tier: 'free',
+    tier: "free",
     remainingTokens: 3,
     showTokenUsage: false,
     lineWrapping: false,
-    theme: 'dark',
+    theme: "dark",
     notifications: true,
     dailyTokens: 0,
     extraTokens: 922000,
     monthlyTokens: 240000,
     totalMonthlyTokens: 1000000,
     nextRefill: 1000000,
-    referralId: '',
+    referralId: "",
     referralTokensEarned: 0,
     freeReferrals: 0,
     proReferrals: 0,
@@ -82,27 +105,29 @@ export function Home() {
   const isMobile = useMediaQuery({ maxWidth: 640 });
 
   // Generate referral link
-  const referralLink = userId ? `https://thunder-muneer.vercel.app/?ref=${userId}` : '';
+  const referralLink = userId
+    ? `https://thunder-muneer.vercel.app/?ref=${userId}`
+    : "";
 
   const loadProjects = () => {
     try {
-      const storedProjects = localStorage.getItem('projects');
+      const storedProjects = localStorage.getItem("projects");
       if (storedProjects) {
         setProjects(JSON.parse(storedProjects));
       }
     } catch (error) {
-      console.error('Error loading projects:', error);
+      console.error("Error loading projects:", error);
     }
   };
 
   const loadChats = () => {
     try {
-      const storedChats = localStorage.getItem('chats');
+      const storedChats = localStorage.getItem("chats");
       if (storedChats) {
         setChats(JSON.parse(storedChats));
       }
     } catch (error) {
-      console.error('Error loading chats:', error);
+      console.error("Error loading chats:", error);
     }
   };
 
@@ -111,24 +136,24 @@ export function Home() {
       if (isSignedIn && user) {
         const metadata = user.unsafeMetadata as Partial<UserMetadata>;
         setUsage({
-          tier: metadata.tier || 'free',
+          tier: metadata.tier || "free",
           remainingTokens: metadata.remainingTokens || 3,
           showTokenUsage: metadata.showTokenUsage ?? false,
           lineWrapping: metadata.lineWrapping ?? false,
-          theme: metadata.theme || 'dark',
+          theme: metadata.theme || "dark",
           notifications: metadata.notifications ?? true,
           dailyTokens: metadata.dailyTokens ?? 0,
           extraTokens: metadata.extraTokens ?? 922000,
           monthlyTokens: metadata.monthlyTokens ?? 240000,
           totalMonthlyTokens: metadata.totalMonthlyTokens ?? 1000000,
           nextRefill: metadata.nextRefill ?? 1000000,
-          referralId: metadata.referralId || userId || '',
+          referralId: metadata.referralId || userId || "",
           referralTokensEarned: metadata.referralTokensEarned || 0,
           freeReferrals: metadata.freeReferrals || 0,
           proReferrals: metadata.proReferrals || 0,
         });
       } else {
-        const localUsage = localStorage.getItem('usage');
+        const localUsage = localStorage.getItem("usage");
         if (localUsage) {
           setUsage(JSON.parse(localUsage));
         }
@@ -140,33 +165,37 @@ export function Home() {
     loadChats();
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'projects') loadProjects();
-      else if (e.key === 'chats') loadChats();
+      if (e.key === "projects") loadProjects();
+      else if (e.key === "chats") loadChats();
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, [isSignedIn, user, userId]);
 
   const recommendations = [
-    'Design a futuristic portfolio for my digital art',
-    'Create an online store for sustainable fashion',
-    'Build a tech blog with interactive demos',
-    'Make a vibrant landing page for my app',
+    "Design a futuristic portfolio for my digital art",
+    "Create an online store for sustainable fashion",
+    "Build a tech blog with interactive demos",
+    "Make a vibrant landing page for my app",
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isSignedIn) {
-      alert('Please sign in to submit prompts');
+      alert("Please sign in to submit prompts");
       return;
     }
-    if (usage.remainingTokens <= 0 && usage.tier === 'free') {
+    if (usage.remainingTokens <= 0 && usage.tier === "free") {
       alert("You've reached your free limit. Please upgrade to continue.");
-      navigate('/pricing');
+      navigate("/pricing");
       return;
     }
     if (prompt.trim()) {
-      const newUsage = { ...usage, remainingTokens: usage.remainingTokens - 1, dailyTokens: usage.dailyTokens + 1 };
+      const newUsage = {
+        ...usage,
+        remainingTokens: usage.remainingTokens - 1,
+        dailyTokens: usage.dailyTokens + 1,
+      };
       const newProject: Project = {
         id: crypto.randomUUID(),
         prompt,
@@ -174,7 +203,7 @@ export function Home() {
       };
       const updatedProjects = [newProject, ...projects];
       try {
-        localStorage.setItem('projects', JSON.stringify(updatedProjects));
+        localStorage.setItem("projects", JSON.stringify(updatedProjects));
         setProjects(updatedProjects);
         const newChat: Chat = {
           id: crypto.randomUUID(),
@@ -182,153 +211,201 @@ export function Home() {
           createdAt: new Date().toISOString(),
         };
         const updatedChats = [newChat, ...chats];
-        localStorage.setItem('chats', JSON.stringify(updatedChats));
+        localStorage.setItem("chats", JSON.stringify(updatedChats));
         setChats(updatedChats);
         setUsage(newUsage);
         if (user) {
           await user.update({ unsafeMetadata: newUsage });
         } else {
-          localStorage.setItem('usage', JSON.stringify(newUsage));
+          localStorage.setItem("usage", JSON.stringify(newUsage));
         }
-        navigate('/builder', { state: { prompt } });
-        setPrompt('');
+        navigate("/builder", { state: { prompt } });
+        setPrompt("");
       } catch (error) {
-        console.error('Error saving data:', error);
-        alert('Failed to save project or chat.');
+        console.error("Error saving data:", error);
+        alert("Failed to save project or chat.");
       }
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) console.log('Uploaded file:', file);
+    if (file) console.log("Uploaded file:", file);
   };
 
   const viewProject = (projectPrompt: string) => {
-    navigate('/builder', { state: { prompt: projectPrompt } });
+    navigate("/builder", { state: { prompt: projectPrompt } });
   };
 
   const handleCopyReferralLink = () => {
     if (referralLink) {
       navigator.clipboard.writeText(referralLink);
-      alert('Referral link copied!');
+      alert("Referral link copied!");
     }
   };
 
   return (
-    <div className={`min-h-screen bg-[#0F172A] flex flex-col items-center justify-start p-4 sm:p-10 relative overflow-hidden font-sans transition-all duration-300 ${isSignedIn ? 'sm:ml-16' : ''}`}>
-      {!isMobile && <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />}
+    <div
+      className={`min-h-screen bg-[#0F172A] flex flex-col items-center justify-start p-4 sm:p-10 relative overflow-hidden font-sans transition-all duration-300 ${
+        isSignedIn ? "sm:ml-16" : ""
+      }`}
+    >
+      {!isMobile && (
+        <Lightning hue={230} intensity={1.2} speed={0.8} size={1.5} />
+      )}
 
       <SignedIn>
         <motion.div
-          className={`hidden sm:flex fixed left-0 top-0 h-screen bg-gray-900/80 backdrop-blur-2xl border-r border-blue-500/40 z-50 ${isSidebarExpanded ? 'w-64' : 'w-16'} transition-all duration-300`}
+          className={`hidden sm:flex fixed left-0 top-0 h-screen bg-gray-900/80 backdrop-blur-2xl border-r border-blue-500/40 z-50 ${
+            isSidebarExpanded ? "w-64" : "w-16"
+          } transition-all duration-300`}
           onMouseEnter={() => setIsSidebarExpanded(true)}
           onMouseLeave={() => setIsSidebarExpanded(false)}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+          transition={{ type: "spring", stiffness: 200, damping: 30 }}
         >
-          <div className="flex flex-col p-4 space-y-2 h-full">
-            <div className="flex items-center mb-6 p-2">
-              <ThunderLogoSVG />
-              {isSidebarExpanded && (
-                <span className="text-blue-400 text-lg font-bold ml-2">Thunder</span>
-              )}
-            </div>
-            <nav className="flex-1 space-y-2">
-              <motion.button
-                onClick={() => navigate('/')}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <HomeIcon className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Home</span>}
-              </motion.button>
-              <motion.button
-                onClick={() => setIsTokensPopupOpen(true)}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <Gift className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Get Tokens</span>}
-              </motion.button>
-              <motion.button
-                onClick={() => navigate('/pricing')}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <DollarSign className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Pricing</span>}
-              </motion.button>
-              <motion.button
-                onClick={() => window.open('https://thunder-docs.vercel.app/', '_blank')}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <HelpCircle className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Help Center</span>}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="w-full mt-4 bg-blue-500/30 hover:bg-blue-500/40 text-blue-400 p-2 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                onClick={() => navigate('/')}
-              >
-                <Plus className="h-5 w-5" />
-                {isSidebarExpanded && <span className="text-sm">New Project</span>}
-              </motion.button>
-              {projects.length > 0 && (
-                <motion.button
-                  onClick={() => viewProject(projects[0].prompt)}
-                  whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                  className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-                >
-                  <Eye className="h-5 w-5 flex-shrink-0" />
-                  {isSidebarExpanded && (
-                    <span className="text-sm truncate">
-                      Last: {projects[0].prompt.substring(0, 20)}{projects[0].prompt.length > 20 ? '...' : ''}
-                    </span>
-                  )}
-                </motion.button>
-              )}
-            </nav>
-            <div className="mt-auto space-y-2">
-              <motion.div
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "w-5 h-5",
-                      userButtonPopoverCard: "bg-gray-900/80 border border-blue-500/40 backdrop-blur-2xl",
-                      userPreviewMainIdentifier: "text-blue-400",
-                      userButtonPopoverActionButtonText: "text-blue-200 hover:text-blue-400",
-                    },
-                  }}
-                />
-                {isSidebarExpanded && <span className="text-sm">Profile</span>}
-              </motion.div>
-              <motion.button
-                onClick={() => setIsSettingsOpen(true)}
-                whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
-                className="flex items-center space-x-3 text-blue-200 hover:text-blue-400 w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors"
-              >
-                <SettingsIcon className="h-5 w-5 flex-shrink-0" />
-                {isSidebarExpanded && <span className="text-sm">Settings</span>}
-              </motion.button>
-            </div>
-          </div>
+    <div className={`flex flex-col h-full transition-all duration-300 ${isSidebarExpanded ? 'w-63' : 'w-16'} p-4 space-y-2`}>
+  {/* Logo Section */}
+  <div className="flex items-center mb-6 p-2 h-12">
+  <div className="w-8 h-8 flex items-center justify-center mt-[1px]">
+    <ThunderLogoSVG />
+  </div>
+  {isSidebarExpanded && (
+    <span className="ml-2 text-blue-400 text-lg font-bold leading-tight">
+      Thunder
+    </span>
+  )}
+</div>
+
+  {/* Navigation */}
+  <nav className="flex-1 space-y-2">
+    {/* Home */}
+    <motion.button
+      onClick={() => navigate('/')}
+      whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+      className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+    >
+      <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+        <HomeIcon className="h-5 w-5 flex-shrink-0" />
+        {isSidebarExpanded && <span className="text-sm">Home</span>}
+      </div>
+    </motion.button>
+
+    {/* Get Tokens */}
+    <motion.button
+      onClick={() => setIsTokensPopupOpen(true)}
+      whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+      className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+    >
+      <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+        <Gift className="h-5 w-5 flex-shrink-0" />
+        {isSidebarExpanded && <span className="text-sm">Get Tokens</span>}
+      </div>
+    </motion.button>
+
+    {/* Pricing */}
+    <motion.button
+      onClick={() => navigate('/pricing')}
+      whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+      className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+    >
+      <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+        <DollarSign className="h-5 w-5 flex-shrink-0" />
+        {isSidebarExpanded && <span className="text-sm">Pricing</span>}
+      </div>
+    </motion.button>
+
+    {/* Help Center */}
+    <motion.button
+      onClick={() => window.open('https://thunder-docs.vercel.app/', '_blank')}
+      whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+      className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+    >
+      <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+        <HelpCircle className="h-5 w-5 flex-shrink-0" />
+        {isSidebarExpanded && <span className="text-sm">Help Center</span>}
+      </div>
+    </motion.button>
+
+    {/* New Project */}
+    <motion.button
+      onClick={() => navigate('/')}
+      whileHover={{ scale: 1.05 }}
+      className={`w-full mt-4 bg-blue-500/30 hover:bg-blue-500/40 text-blue-400 p-2 rounded-lg transition-colors flex items-center ${
+        isSidebarExpanded ? 'justify-start space-x-2' : 'justify-center'
+      }`}
+    >
+      <Plus className="h-5 w-5" />
+      {isSidebarExpanded && <span className="text-sm">New Project</span>}
+    </motion.button>
+
+    {/* Last Project */}
+    {projects.length > 0 && (
+      <motion.button
+        onClick={() => viewProject(projects[0].prompt)}
+        whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+        className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+      >
+        <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+          <Eye className="h-5 w-5 flex-shrink-0" />
+          {isSidebarExpanded && (
+            <span className="text-sm truncate">
+              Last: {projects[0].prompt.substring(0, 20)}
+              {projects[0].prompt.length > 20 ? '...' : ''}
+            </span>
+          )}
+        </div>
+      </motion.button>
+    )}
+  </nav>
+
+  {/* Bottom Section */}
+  <div className="mt-auto space-y-2">
+    {/* Profile */}
+    <motion.div
+      whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+      className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+    >
+      <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+        <UserButton
+          afterSignOutUrl="/"
+          appearance={{
+            elements: {
+              userButtonAvatarBox: 'w-5 h-5',
+              userButtonPopoverCard: 'bg-gray-900/80 border border-blue-500/40 backdrop-blur-2xl',
+              userPreviewMainIdentifier: 'text-blue-400',
+              userButtonPopoverActionButtonText: 'text-blue-200 hover:text-blue-400',
+            },
+          }}
+        />
+        {isSidebarExpanded && <span className="text-sm">Profile</span>}
+      </div>
+    </motion.div>
+
+    {/* Settings */}
+    <motion.button
+      onClick={() => setIsSettingsOpen(true)}
+      whileHover={{ scale: 1.05, backgroundColor: '#1E3A8A' }}
+      className="w-full p-2 rounded-lg hover:bg-blue-900/60 transition-colors text-blue-200 hover:text-blue-400"
+    >
+      <div className={`flex items-center ${isSidebarExpanded ? 'space-x-3 justify-start' : 'justify-center'}`}>
+        <SettingsIcon className="h-5 w-5 flex-shrink-0" />
+        {isSidebarExpanded && <span className="text-sm">Settings</span>}
+      </div>
+    </motion.button>
+  </div>
+</div>
         </motion.div>
 
         <motion.div
           className="sm:hidden fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-2xl border-t border-blue-500/40 z-50 flex justify-around items-center py-2"
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+          transition={{ type: "spring", stiffness: 200, damping: 30 }}
         >
           <motion.button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
@@ -346,7 +423,9 @@ export function Home() {
             <span className="text-xs">Tokens</span>
           </motion.button>
           <motion.button
-            onClick={() => window.open('https://thunder-docs.vercel.app/', '_blank')}
+            onClick={() =>
+              window.open("https://thunder-docs.vercel.app/", "_blank")
+            }
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
@@ -355,7 +434,7 @@ export function Home() {
             <span className="text-xs">Help</span>
           </motion.button>
           <motion.button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="flex flex-col items-center text-blue-200 hover:text-blue-400 p-2"
@@ -393,9 +472,11 @@ export function Home() {
               appearance={{
                 elements: {
                   userButtonAvatarBox: "w-6 h-6",
-                  userButtonPopoverCard: "bg-gray-900/80 border border-blue-500/40 backdrop-blur-2xl",
+                  userButtonPopoverCard:
+                    "bg-gray-900/80 border border-blue-500/40 backdrop-blur-2xl",
                   userPreviewMainIdentifier: "text-blue-400",
-                  userButtonPopoverActionButtonText: "text-blue-200 hover:text-blue-400",
+                  userButtonPopoverActionButtonText:
+                    "text-blue-200 hover:text-blue-400",
                 },
               }}
             />
@@ -430,7 +511,7 @@ export function Home() {
                 initial={{ scale: 0.8, y: 50 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.8, y: 50 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -447,30 +528,45 @@ export function Home() {
                 </div>
                 <div className="space-y-4">
                   <p className="text-blue-200 text-sm">
-                    Earn 200K tokens for yourself & each new user you refer to Thunder.
+                    Earn 200K tokens for yourself & each new user you refer to
+                    Thunder.
                   </p>
                   <p className="text-blue-200 text-sm">
-                    Pro users: earn an additional 5M tokens for yourself & your referral when they upgrade to a Pro account within 30 days!
+                    Pro users: earn an additional 5M tokens for yourself & your
+                    referral when they upgrade to a Pro account within 30 days!
                   </p>
                   <div>
-                    <h3 className="text-blue-400 font-semibold mb-2">Referral tokens earned</h3>
-                    <p className="text-blue-200 text-sm">{(usage.referralTokensEarned ?? 0).toLocaleString()}</p>
+                    <h3 className="text-blue-400 font-semibold mb-2">
+                      Referral tokens earned
+                    </h3>
+                    <p className="text-blue-200 text-sm">
+                      {(usage.referralTokensEarned ?? 0).toLocaleString()}
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <h3 className="text-blue-400 font-semibold mb-2">Free Referrals</h3>
-                      <p className="text-blue-200 text-sm">{usage.freeReferrals ?? 0}</p>
+                      <h3 className="text-blue-400 font-semibold mb-2">
+                        Free Referrals
+                      </h3>
+                      <p className="text-blue-200 text-sm">
+                        {usage.freeReferrals ?? 0}
+                      </p>
                     </div>
                     <div>
-                      <h3 className="text-blue-400 font-semibold mb-2">Pro Referrals</h3>
+                      <h3 className="text-blue-400 font-semibold mb-2">
+                        Pro Referrals
+                      </h3>
                       <p className="text-blue-200 text-sm">
-                        {usage.tier === 'pro' ? (usage.proReferrals ?? 0) : 'Upgrade to Pro to unlock Pro referrals'}
+                        {usage.tier === "pro"
+                          ? usage.proReferrals ?? 0
+                          : "Upgrade to Pro to unlock Pro referrals"}
                       </p>
                     </div>
                   </div>
                   <div>
                     <p className="text-blue-200 text-sm mb-2">
-                      Use your personal referral link to invite users to join Thunder:
+                      Use your personal referral link to invite users to join
+                      Thunder:
                     </p>
                     <div className="flex items-center bg-gray-800/50 p-2 rounded-lg">
                       <input
@@ -503,7 +599,7 @@ export function Home() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
           >
-            {usage.tier === 'free' ? (
+            {usage.tier === "free" ? (
               <span className="text-blue-400">
                 Free Tokens: {usage.remainingTokens}/3
               </span>
@@ -521,11 +617,13 @@ export function Home() {
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <div className="flex items-center mb-4 sm:mb-0">
               <ThunderLogoSVG />
-              <span className="text-blue-400 text-lg font-bold ml-2">Thunder</span>
+              <span className="text-blue-400 text-lg font-bold ml-2">
+                Thunder
+              </span>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <motion.button
-                onClick={() => navigate('/pricing')}
+                onClick={() => navigate("/pricing")}
                 className="text-blue-200 hover:text-blue-400 transition-colors"
                 whileHover={{ scale: 1.05 }}
               >
@@ -562,9 +660,13 @@ export function Home() {
         >
           <motion.h1
             className="text-4xl sm:text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent leading-tight tracking-tighter"
-            animate={{ backgroundPosition: '200%' }}
-            transition={{ duration: 4, repeat: Infinity, repeatType: 'reverse' }}
-            style={{ backgroundSize: '200%' }}
+            animate={{ backgroundPosition: "200%" }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              repeatType: "reverse",
+            }}
+            style={{ backgroundSize: "200%" }}
           >
             What do you want to build?
           </motion.h1>
@@ -574,7 +676,8 @@ export function Home() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.7 }}
           >
-            Prompt, run, edit, and deploy full-stack web and mobile apps with Thunder.
+            Prompt, run, edit, and deploy full-stack web and mobile apps with
+            Thunder.
           </motion.p>
         </motion.div>
 
@@ -582,14 +685,22 @@ export function Home() {
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.3, ease: [0.6, -0.05, 0.01, 0.99] }}
+            transition={{
+              duration: 0.9,
+              delay: 0.3,
+              ease: [0.6, -0.05, 0.01, 0.99],
+            }}
           >
             <div className="relative">
               <div className="bg-gray-900/60 backdrop-blur-2xl border border-blue-500/40 rounded-3xl p-4 shadow-2xl shadow-blue-500/30">
                 <motion.button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  whileHover={{ scale: 1.2, rotate: 15, boxShadow: '0 0 25px rgba(96, 165, 250, 0.8)' }}
+                  whileHover={{
+                    scale: 1.2,
+                    rotate: 15,
+                    boxShadow: "0 0 25px rgba(96, 165, 250, 0.8)",
+                  }}
                   whileTap={{ scale: 0.85 }}
                   className="absolute bottom-4 sm:bottom-5 left-4 sm:left-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full p-3 sm:p-4 shadow-lg shadow-blue-500/60 hover:shadow-purple-600/80 transition-all duration-500"
                 >
@@ -608,12 +719,18 @@ export function Home() {
                   placeholder="e.g. A modern SaaS website with animations and 3D assets"
                   rows={4}
                   className="w-full p-4 sm:p-6 sm:px-16 bg-transparent text-blue-100 rounded-xl border-none placeholder-blue-200/60 focus:outline-none focus:ring-4 focus:ring-blue-500/70 transition-all duration-500 text-base sm:text-lg resize-none"
-                  whileFocus={{ scale: 1.03, boxShadow: '0 0 20px rgba(96, 165, 250, 0.5)' }}
+                  whileFocus={{
+                    scale: 1.03,
+                    boxShadow: "0 0 20px rgba(96, 165, 250, 0.5)",
+                  }}
                 />
                 {prompt.trim() && (
                   <motion.button
                     onClick={handleSubmit}
-                    whileHover={{ scale: 1.15, boxShadow: '0 0 25px rgba(96, 165, 250, 0.8)' }}
+                    whileHover={{
+                      scale: 1.15,
+                      boxShadow: "0 0 25px rgba(96, 165, 250, 0.8)",
+                    }}
                     whileTap={{ scale: 0.9 }}
                     className="absolute bottom-4 sm:bottom-8 right-4 sm:right-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg px-6 sm:px-8 py-2 sm:py-3 text-sm font-semibold shadow-lg shadow-purple-600/60 hover:shadow-purple-600/80 transition-all duration-500 animate-pulse-glow"
                   >
@@ -635,7 +752,9 @@ export function Home() {
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4">
               Join Thunder to Unleash Creativity
             </h2>
-            <p className="text-blue-200 mb-6">Sign up to start generating amazing website designs</p>
+            <p className="text-blue-200 mb-6">
+              Sign up to start generating amazing website designs
+            </p>
             <div className="flex justify-center gap-4">
               <SignUpButton mode="modal">
                 <motion.button
@@ -653,14 +772,22 @@ export function Home() {
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.5, ease: [0.6, -0.05, 0.01, 0.99] }}
+            transition={{
+              duration: 0.9,
+              delay: 0.5,
+              ease: [0.6, -0.05, 0.01, 0.99],
+            }}
             className="flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-5 justify-center"
           >
             {recommendations.map((rec, index) => (
               <motion.button
                 key={index}
                 onClick={() => setPrompt(rec)}
-                whileHover={{ scale: 1.15, y: -5, boxShadow: '0 0 20px rgba(192, 38, 211, 0.6)' }}
+                whileHover={{
+                  scale: 1.15,
+                  y: -5,
+                  boxShadow: "0 0 20px rgba(192, 38, 211, 0.6)",
+                }}
                 whileTap={{ scale: 0.9 }}
                 className="bg-gray-900/60 backdrop-blur-2xl hover:bg-gray-800/70 border border-blue-500/40 text-blue-100 hover:text-blue-400 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-sm font-medium transition-all duration-500 shadow-lg hover:shadow-2xl hover:shadow-purple-600/50"
                 initial={{ opacity: 0, y: 30 }}
@@ -673,7 +800,7 @@ export function Home() {
           </motion.div>
         </SignedIn>
 
-        {usage.tier === 'free' && usage.remainingTokens <= 1 && (
+        {usage.tier === "free" && usage.remainingTokens <= 1 && (
           <motion.div
             className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 rounded-xl mt-8"
             initial={{ scale: 0.9 }}
@@ -683,7 +810,7 @@ export function Home() {
               ⚡ Upgrade for Unlimited Access
             </h3>
             <button
-              onClick={() => navigate('/pricing')}
+              onClick={() => navigate("/pricing")}
               className="bg-white text-purple-600 px-6 py-2 rounded-full font-bold hover:bg-opacity-90 transition-all"
             >
               Upgrade Now
