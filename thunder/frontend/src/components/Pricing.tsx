@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState,useEffect } from 'react';
+import Navbar from "../components/Navbar";
+
 
 interface PricingTier {
   name: string;
@@ -300,7 +302,9 @@ export function Pricing() {
   };
 
   return (
-    <div className="min-h-screen bg-black py-20 px-4">
+    <div className="min-h-screen bg-black pt-6 px-4">
+      <Navbar />
+
       <div className="max-w-6xl mx-auto">
         {/* 🔹 Your ORIGINAL pricing page UI goes here */}
         <h1 className="text-4xl font-bold text-white text-center">
