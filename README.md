@@ -66,29 +66,58 @@
 
 ## 📂 Project Structure  
 
+#### Frontend Folder Structure
+```
+frontend/
+├─ .next/
+│  └─ trace
+├─ src/
+│  ├─ Builder/
+│  │  └─ PreviewModal.tsx
+│  ├─ components/
+│  │  ├─ checkout.tsx
+│  │  ├─ CodeEditor.tsx
+│  │  ├─ FileExplorer.tsx
+│  │  ├─ FileViewer.tsx
+│  │  ├─ Footer.tsx
+│  │  ├─ lightning.tsx
+│  │  ├─ Loader.tsx
+│  │  ├─ PreviewFrame.tsx
+│  │  ├─ Pricing.tsx
+│  │  ├─ setting.tsx
+│  │  ├─ StepsList.tsx
+│  │  ├─ TabView.tsx
+│  │  └─ terminal.tsx
+│  ├─ hooks/
+│  │  └─ useWebContainer.ts
+│  ├─ pages/
+│  │  ├─ _document.tsx
+│  │  ├─ Builder.tsx
+│  │  └─ Home.tsx
+│  ├─ types/
+│  │  └─ index.ts
+│  ├─ App.tsx
+│  ├─ config.ts
+│  ├─ index.css
+│  ├─ main.tsx
+│  ├─ steps.ts
+│  └─ vite-env.d.ts
+└─ important assets and documentations
+```
+#### Backend Folder Structure
+```
+be/
+├─ src/
+│  ├─ defaults/
+│  │  ├─ node.ts
+│  │  └─ react.ts
+│  ├─ constants.ts
+│  ├─ index.ts
+│  ├─ prompts.ts
+│  └─ stripindents.ts
+└─ important assests and documenations
 
-thunder/
-│── be/ # Backend services
-│ ├── src/ # API & WebSocket server code
-│ └── package.json
-│
-│── frontend/ # Frontend (React + Vite)
-│ ├── public/ # Static assets
-│ ├── src/ # Components, pages, hooks, utils
-│ │ ├── components/
-│ │ ├── pages/
-│ │ ├── hooks/
-│ │ └── utils/
-│ └── package.json
-│
-│── public/ # Screenshots, logos, assets
-│── .env.example # Example environment variables
-│── LICENSE
-│── README.md
-└── package.json
-
-text
-
+```
 ---
 
 ## 🛠️ Installation  
