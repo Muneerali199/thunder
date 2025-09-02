@@ -20,7 +20,7 @@
 - [Installation](#installation)  
   - [Quick Start](#quick-start)  
   - [Prerequisites](#prerequisites)  
-  - [Setup](#setup)  
+  - [Setup](#quick-setup)  
 - [Usage](#usage)  
 - [Contributing](#contributing)  
 - [License](#license)  
@@ -28,7 +28,7 @@
 
 ---
 
-## 🖼️ Overview  
+## Overview  
 
 **Thunder** is a modern, intuitive **website builder** with drag‑and‑drop functionality, empowering users to create professional websites in minutes.  
 
@@ -36,15 +36,15 @@
 
 ---
 
-## ✨ Features  
+## Features  
 
-### 🚀 Core Functionality  
+###  Core Functionality  
 - 🖱️ **Drag-and-Drop Builder** – Intuitive editor for seamless site creation.  
 - 🎨 **Template Gallery** – Choose from 50+ responsive templates.  
 - 📱 **Cross-Device Preview** – Real-time previews for desktop, tablet, and mobile.  
 - 🌈 **Style Customizer** – Full CSS & theme variable support.  
 
-### 🔧 Advanced Features  
+### Advanced Features  
 - 🌍 **One-Click Deployment** – Deploy to a custom domain instantly.  
 - 🤝 **Team Collaboration** – Real-time co-editing for teams.  
 - 🕒 **Version History** – Roll back changes at any time.  
@@ -52,7 +52,7 @@
 
 ---
 
-## 💻 Tech Stack  
+## Tech Stack  
 
 | Category           | Technologies                          |  
 |--------------------|---------------------------------------|  
@@ -64,7 +64,7 @@
 
 ---
 
-## 📂 Project Structure  
+## Project Structure  
 
 #### Frontend Folder Structure
 ```
@@ -120,13 +120,13 @@ be/
 ```
 ---
 
-## 🛠️ Installation  
-### Quick Start
+## Installation  
+## Quick Start
 
 For detailed setup instructions, see our **[Development Setup Guide](DEVELOPMENT_SETUP.md)**.
 
 
-### Prerequisites  
+## Prerequisites  
 
 - **Node.js** v18.0.0+  
 
@@ -135,35 +135,34 @@ For detailed setup instructions, see our **[Development Setup Guide](DEVELOPMENT
 - **Git** (latest)  
 
 
-### Quick Setup  
+## Quick Setup  
 
 
-1. **Clone and setup**  
+### 1. Clone and setup 
 
 ```bash
-
 git clone https://github.com/subh37106/thunder.git
 cd thunder
 npm install
+```
 
-## 2. Frontend setup
+### 2. Frontend setup
 
 ```bash
-
 cd frontend
 npm install
 npm run dev
+```
 
-## 3. Backend setup (if needed)
+### 3. Backend setup (if needed)
 
 ```bash
-
 cd be
 npm install
 npm run start
+```
 
-
-## 📖 Usage
+## Usage
 Thunder makes it easy to create professional websites with no coding experience. Follow these steps to get started:
 
 Access the Builder: Visit thunder-muneer.vercel.app and sign in with Clerk authentication.
@@ -176,7 +175,7 @@ Track Performance: Use integrated analytics to monitor site performance.
 For detailed guides, visit thunder-docs.vercel.app.
 
 
-## 🤝 Contributing
+## Contributing
 We welcome contributions to Thunder! To contribute:
 
 Fork the Repository:
@@ -184,7 +183,7 @@ Fork the Repository:
 ```bash 
 git clone https://github.com/<your-username>/thunder.git
 
-
+```
 
 Set Up Locally: Follow the Installation instructions.
 
@@ -195,7 +194,7 @@ Create a Feature Branch:
 
 git checkout -b feature/your-feature
 
-
+```
 
 Make Changes: Follow coding standards (TypeScript, TailwindCSS, ESLint).
 Test: Run npm run test (Jest) and npm run cypress (Cypress) for code changes.
@@ -205,14 +204,14 @@ Engage: Respond to feedback from maintainers.
 For questions, contact alimuneerali245@gmail.com or open an issue.
 
 
-## 📜 License  
+## License  
 
 This project is distributed under the **MIT License**.  
 See [LICENSE](LICENSE) for details.  
 
 ---
 
-## 💬 Support  
+## Support  
 
 For help, suggestions, or issues:  
 - 📧 Email: **alimuneerali245@gmail.com**  
