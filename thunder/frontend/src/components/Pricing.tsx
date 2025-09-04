@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState,useEffect } from 'react';
 import Navbar from "../components/Navbar";
 
+import BackButton from './buttons/BackButton';
 
 interface PricingTier {
   name: string;
@@ -301,10 +302,17 @@ export function Pricing() {
       : individualMonthlyTiers;
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  }
+
   return (
     <div className="min-h-screen bg-black pt-6 px-4">
       <Navbar />
-
+    <div className="min-h-screen bg-black py-5 px-4">
+      <span onClick={handleBack}>
+        <BackButton/>
+      </span>
       <div className="max-w-6xl mx-auto">
         {/* 🔹 Your ORIGINAL pricing page UI goes here */}
         <h1 className="text-4xl font-bold text-white text-center">
