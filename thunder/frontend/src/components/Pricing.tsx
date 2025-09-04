@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useState,useEffect } from 'react';
+import Navbar from "../components/Navbar";
+
 import BackButton from './buttons/BackButton';
 
 interface PricingTier {
@@ -305,6 +307,8 @@ export function Pricing() {
   }
 
   return (
+    <div className="min-h-screen bg-black pt-6 px-4">
+      <Navbar />
     <div className="min-h-screen bg-black py-5 px-4">
       <span onClick={handleBack}>
         <BackButton/>
