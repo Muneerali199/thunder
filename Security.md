@@ -21,7 +21,6 @@ Make sure to use the latest version of Thunder for the latest security features 
 Follow password best practices, such as using strong, unique passwords for each account.
 Regularly update your dependencies to the latest versions.
 Acknowledgements
-We appreciate contributions from the community and researchers who help us improve the security of Thunder. Thank you for keeping the platform secure for everyone!
-
+We appreciate contributions from the community and researchers who help us improve the security of Thunder. Thank you for keeping the platform secure for everyone
 
 
